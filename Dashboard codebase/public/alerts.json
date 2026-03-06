@@ -1,0 +1,15 @@
+[
+  { "id": "ALR-1032", "type": "Panic SOS", "severity": "Critical", "location": "Shillong Peak", "district": "East Khasi Hills", "timeMinutesAgo": 5 },
+  { "id": "ALR-1031", "type": "Geo-fence breach", "severity": "High", "location": "Ward 4, PS-12", "district": "Aizawl", "timeMinutesAgo": 12 },
+  { "id": "ALR-1030", "type": "Route deviation", "severity": "Medium", "location": "Kaziranga Gate 2", "district": "Golaghat", "timeMinutesAgo": 27 },
+  { "id": "ALR-1029", "type": "Inactivity", "severity": "Low", "location": "Loktak Lake", "district": "Bishnupur", "timeMinutesAgo": 39 },
+  { "id": "ALR-1028", "type": "Panic SOS", "severity": "Critical", "location": "Cherrapunji", "district": "East Khasi Hills", "timeMinutesAgo": 58 },
+  { "id": "ALR-1027", "type": "Geo-fence breach", "severity": "High", "location": "Dzukou Valley", "district": "Kohima", "timeMinutesAgo": 63 },
+  { "id": "ALR-1026", "type": "Route deviation", "severity": "Medium", "location": "Umiam Lake", "district": "Ri Bhoi", "timeMinutesAgo": 80 },
+  { "id": "ALR-1025", "type": "Inactivity", "severity": "Low", "location": "Majuli", "district": "Majuli", "timeMinutesAgo": 102 },
+  { "id": "ALR-1024", "type": "Geo-fence breach", "severity": "High", "location": "Ward 9, PS-4", "district": "Aizawl", "timeMinutesAgo": 135 },
+  { "id": "ALR-1023", "type": "Panic SOS", "severity": "Critical", "location": "Nathula Pass", "district": "Gangtok", "timeMinutesAgo": 160 },
+  { "id": "ALR-1022", "type": "Route deviation", "severity": "Medium", "location": "Tawang", "district": "Tawang", "timeMinutesAgo": 210 },
+  { "id": "ALR-1021", "type": "Inactivity", "severity": "Low", "location": "Loktak Lake", "district": "Bishnupur", "timeMinutesAgo": 260 }
+]
+

@@ -1,0 +1,134 @@
+{
+  "total_tourists": 487,
+  "tourists_today": 23,
+  "active_tourists": 463,
+  "tourists_with_alerts": 24,
+  "total_alerts": 156,
+  "critical_alerts": 45,
+  "high_alerts": 38,
+  "medium_alerts": 42,
+  "low_alerts": 31,
+  "resolved_alerts": 312,
+  "active_units": 67,
+  "districts_covered": 45,
+  "open_cases": 18,
+  "verified_ids": 145,
+  "response_time_avg": 3.2,
+  "success_rate": 91.7,
+  "districts": [
+    {
+      "name": "East Khasi Hills",
+      "tourists": 45,
+      "alerts": 12,
+      "risk_level": "medium"
+    },
+    {
+      "name": "Kamrup",
+      "tourists": 38,
+      "alerts": 8,
+      "risk_level": "low"
+    },
+    {
+      "name": "Kohima",
+      "tourists": 32,
+      "alerts": 15,
+      "risk_level": "high"
+    },
+    {
+      "name": "Aizawl",
+      "tourists": 28,
+      "alerts": 9,
+      "risk_level": "medium"
+    },
+    {
+      "name": "Gangtok",
+      "tourists": 41,
+      "alerts": 6,
+      "risk_level": "low"
+    },
+    {
+      "name": "Tawang",
+      "tourists": 19,
+      "alerts": 11,
+      "risk_level": "high"
+    },
+    {
+      "name": "Golaghat",
+      "tourists": 22,
+      "alerts": 4,
+      "risk_level": "low"
+    },
+    {
+      "name": "Majuli",
+      "tourists": 17,
+      "alerts": 7,
+      "risk_level": "medium"
+    }
+  ],
+  "hourly_activity": [
+    { "hour": 0, "tourists": 12, "alerts": 2 },
+    { "hour": 1, "tourists": 8, "alerts": 1 },
+    { "hour": 2, "tourists": 5, "alerts": 0 },
+    { "hour": 3, "tourists": 3, "alerts": 1 },
+    { "hour": 4, "tourists": 7, "alerts": 0 },
+    { "hour": 5, "tourists": 15, "alerts": 2 },
+    { "hour": 6, "tourists": 28, "alerts": 3 },
+    { "hour": 7, "tourists": 42, "alerts": 5 },
+    { "hour": 8, "tourists": 58, "alerts": 8 },
+    { "hour": 9, "tourists": 73, "alerts": 12 },
+    { "hour": 10, "tourists": 89, "alerts": 15 },
+    { "hour": 11, "tourists": 105, "alerts": 18 },
+    { "hour": 12, "tourists": 118, "alerts": 22 },
+    { "hour": 13, "tourists": 125, "alerts": 24 },
+    { "hour": 14, "tourists": 132, "alerts": 26 },
+    { "hour": 15, "tourists": 128, "alerts": 25 },
+    { "hour": 16, "tourists": 121, "alerts": 23 },
+    { "hour": 17, "tourists": 115, "alerts": 21 },
+    { "hour": 18, "tourists": 98, "alerts": 18 },
+    { "hour": 19, "tourists": 85, "alerts": 15 },
+    { "hour": 20, "tourists": 67, "alerts": 12 },
+    { "hour": 21, "tourists": 48, "alerts": 8 },
+    { "hour": 22, "tourists": 32, "alerts": 5 },
+    { "hour": 23, "tourists": 21, "alerts": 3 }
+  ],
+  "weekly_trends": [
+    { "day": "Monday", "tourists": 423, "alerts": 142, "incidents": 28 },
+    { "day": "Tuesday", "tourists": 456, "alerts": 128, "incidents": 22 },
+    { "day": "Wednesday", "tourists": 389, "alerts": 156, "incidents": 35 },
+    { "day": "Thursday", "tourists": 467, "alerts": 134, "incidents": 19 },
+    { "day": "Friday", "tourists": 512, "alerts": 145, "incidents": 31 },
+    { "day": "Saturday", "tourists": 578, "alerts": 189, "incidents": 42 },
+    { "day": "Sunday", "tourists": 534, "alerts": 167, "incidents": 38 }
+  ],
+  "top_locations": [
+    { "name": "Shillong", "visitors": 89, "alerts": 12 },
+    { "name": "Guwahati", "visitors": 76, "alerts": 8 },
+    { "name": "Kaziranga", "visitors": 65, "alerts": 15 },
+    { "name": "Gangtok", "visitors": 58, "alerts": 6 },
+    { "name": "Tawang", "visitors": 43, "alerts": 11 },
+    { "name": "Kohima", "visitors": 39, "alerts": 9 },
+    { "name": "Aizawl", "visitors": 34, "alerts": 7 },
+    { "name": "Cherrapunji", "visitors": 28, "alerts": 5 }
+  ],
+  "alert_types": [
+    { "type": "Panic SOS", "count": 45, "percentage": 28.8 },
+    { "type": "Geo-fence breach", "count": 38, "percentage": 24.4 },
+    { "type": "Route deviation", "count": 31, "percentage": 19.9 },
+    { "type": "Medical Emergency", "count": 18, "percentage": 11.5 },
+    { "type": "Lost contact", "count": 14, "percentage": 9.0 },
+    { "type": "Weather alert", "count": 10, "percentage": 6.4 }
+  ],
+  "response_teams": [
+    { "team": "Police", "active": 23, "assigned": 18, "available": 5 },
+    { "team": "Medical", "active": 15, "assigned": 12, "available": 3 },
+    { "team": "Tourism", "active": 18, "assigned": 14, "available": 4 },
+    { "team": "Emergency", "active": 11, "assigned": 8, "available": 3 }
+  ],
+  "system_health": {
+    "api_uptime": 99.8,
+    "websocket_connections": 487,
+    "database_performance": 95.2,
+    "alert_processing_time": 1.8,
+    "location_accuracy": 98.5
+  }
+}

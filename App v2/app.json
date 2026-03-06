@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Travel Guardian V2",
+    "slug": "travel-guardian-v2",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3498db"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.travelguardian.v2",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to location to show your position on the map and provide location-based safety features.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs background location access to continuously track your safety and send alerts when needed.",
+        "NSCameraUsageDescription": "This app needs access to camera to take photos for identity verification.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to upload documents for identity verification."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3498db"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.travelguardian.v2",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Travel Guardian to use your location to provide safety features and emergency services.",
+          "isBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-task-manager",
+        {
+          "backgroundModes": ["location"]
+        }
+      ]
+    ],
+    "extra": {
+      "EXPO_PUBLIC_API_BASE": "http://localhost:8000/api/v1",
+      "EXPO_PUBLIC_WS_HOST": "localhost:8000"
+    }
+  }
+}

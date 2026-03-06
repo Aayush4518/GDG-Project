@@ -1,0 +1,21 @@
+[
+  {
+    "id": "TID-NE-2025-0001",
+    "name": "Aarav Mehta",
+    "nationality": "Indian",
+    "kyc": "Aadhaar **** 1234",
+    "itinerary": "Shillong → Cherrapunji → Dawki",
+    "emergencyContact": "+91 9XXXX 12345",
+    "validTill": "2025-12-31"
+  },
+  {
+    "id": "TID-NE-2025-0002",
+    "name": "Emma Williams",
+    "nationality": "British",
+    "kyc": "Passport **** 8451",
+    "itinerary": "Guwahati → Kaziranga → Majuli",
+    "emergencyContact": "+44 7XXXX 44321",
+    "validTill": "2025-10-15"
+  }
+]
+

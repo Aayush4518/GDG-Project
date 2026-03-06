@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Basic React Test</h2>
+        <div id="react-test">Loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Console Errors</h2>
+        <div id="console-errors">Check browser console (F12)</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Network Test</h2>
+        <button onclick="testNetwork()">Test Backend Connection</button>
+        <div id="network-result"></div>
+    </div>
+
+    <script>
+        // Test basic functionality
+        document.getElementById('react-test').innerHTML = '<span class="success">✅ Basic HTML/JS working</span>';
+        
+        // Test network connection
+        async function testNetwork() {
+            const resultDiv = document.getElementById('network-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/dashboard/analytics');
+                if (response.ok) {
+                    resultDiv.innerHTML = '<span class="success">✅ Backend connected successfully</span>';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ Backend responded with error: ' + response.status + '</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ Backend not reachable: ' + error.message + '</span>';
+            }
+        }
+        
+        // Log console errors
+        window.addEventListener('error', function(e) {
+            const errorDiv = document.getElementById('console-errors');
+            errorDiv.innerHTML += '<div class="error">❌ ' + e.message + ' at ' + e.filename + ':' + e.lineno + '</div>';
+        });
+    </script>
+</body>
+</html>

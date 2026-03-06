@@ -1,0 +1,360 @@
+/* Heat Map Layer Styles */
+
+/* Risk Zone Circles with Animations */
+.heat-zone {
+  transition: all 0.3s ease-in-out;
+}
+
+.heat-zone-high {
+  animation: blinkRisk 1.2s infinite ease-in-out;
+  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.6));
+}
+
+.heat-zone-medium {
+  animation: pulseWarning 2s infinite ease-in-out;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+}
+
+.heat-zone-safe {
+  animation: glowSafe 3s infinite ease-in-out;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.3));
+}
+
+/* Blinking Animation for High Risk Zones */
+@keyframes blinkRisk {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  25% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+  75% {
+    opacity: 0.9;
+    transform: scale(1.03);
+  }
+}
+
+/* Pulsing Animation for Medium Risk Zones */
+@keyframes pulseWarning {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+/* Gentle Glow for Safe Zones */
+@keyframes glowSafe {
+  0%, 100% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.3));
+  }
+  50% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.5));
+  }
+}
+
+/* Heat Map Popup Styles */
+.heat-zone-popup {
+  min-width: 280px;
+  color: #1f2937;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.popup-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.risk-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-badge.risk-high {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.risk-badge.risk-medium {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.risk-badge.risk-safe {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
+}
+
+.popup-content {
+  margin-bottom: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 4px 0;
+}
+
+.info-row .label {
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.info-row .value {
+  font-weight: 600;
+  color: #111827;
+  font-size: 13px;
+}
+
+.zone-stats {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+  border-left: 4px solid #e5e7eb;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-icon {
+  font-size: 16px;
+}
+
+.stat-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Heat Map Legend Styles */
+.heatmap-legend {
+  position: fixed;
+  bottom: 160px;
+  left: 20px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 90;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.heatmap-legend.collapsed {
+  padding: 12px;
+  min-width: auto;
+}
+
+.legend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 12px;
+}
+
+.heatmap-legend.collapsed .legend-header {
+  margin-bottom: 0;
+}
+
+.legend-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.legend-toggle {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.legend-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+.legend-content {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.legend-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid;
+  position: relative;
+}
+
+.legend-circle.safe {
+  background: #22c55e;
+  border-color: #16a34a;
+}
+
+.legend-circle.medium {
+  background: #f59e0b;
+  border-color: #d97706;
+}
+
+.legend-circle.high {
+  background: #dc2626;
+  border-color: #b91c1c;
+}
+
+/* Legend Circle Animations */
+.legend-circle.blinking {
+  animation: legendGlow 3s infinite ease-in-out;
+}
+
+.legend-circle.pulsing {
+  animation: legendPulse 2s infinite ease-in-out;
+}
+
+.legend-circle.blinking-fast {
+  animation: legendBlink 1.2s infinite ease-in-out;
+}
+
+@keyframes legendGlow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+  }
+}
+
+@keyframes legendPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes legendBlink {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(220, 38, 38, 0.4);
+    opacity: 0.6;
+  }
+  25% {
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.8);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(220, 38, 38, 1);
+    opacity: 0.8;
+  }
+  75% {
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.8);
+    opacity: 1;
+  }
+}
+
+.zone-summary {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summary-stat {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.summary-label {
+  color: #94a3b8;
+}
+
+.summary-value {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .heatmap-legend {
+    bottom: 80px;
+    left: 10px;
+    padding: 12px;
+    min-width: 180px;
+  }
+  
+  .legend-header h4 {
+    font-size: 13px;
+  }
+  
+  .legend-item {
+    font-size: 12px;
+  }
+}

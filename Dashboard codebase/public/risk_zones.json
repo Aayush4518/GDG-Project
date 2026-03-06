@@ -1,0 +1,212 @@
+[
+  {
+    "id": "RZ-001",
+    "name": "Shillong Peak Area",
+    "center": {
+      "latitude": 25.5941,
+      "longitude": 91.8825
+    },
+    "radius": 2000,
+    "risk_level": "high",
+    "alert_count": 12,
+    "reason": "Recent weather warnings and route deviations",
+    "color": "#ef4444",
+    "intensity": 0.8
+  },
+  {
+    "id": "RZ-002", 
+    "name": "Cherrapunji Tourist Zone",
+    "center": {
+      "latitude": 25.4670,
+      "longitude": 91.3662
+    },
+    "radius": 1500,
+    "risk_level": "medium",
+    "alert_count": 5,
+    "reason": "Heavy rainfall and slippery roads",
+    "color": "#f59e0b",
+    "intensity": 0.6
+  },
+  {
+    "id": "RZ-003",
+    "name": "Kaziranga Safe Corridor", 
+    "center": {
+      "latitude": 26.7509,
+      "longitude": 94.2037
+    },
+    "radius": 3000,
+    "risk_level": "safe",
+    "alert_count": 1,
+    "reason": "Well-patrolled wildlife sanctuary with good facilities",
+    "color": "#22c55e",
+    "intensity": 0.7
+  },
+  {
+    "id": "RZ-004",
+    "name": "Nathula Border Zone",
+    "center": {
+      "latitude": 27.0844,
+      "longitude": 88.2646
+    },
+    "radius": 1800,
+    "risk_level": "high",
+    "alert_count": 8,
+    "reason": "High altitude, restricted area, medical emergencies",
+    "color": "#dc2626",
+    "intensity": 0.9
+  },
+  {
+    "id": "RZ-005",
+    "name": "Tawang Monastery Area",
+    "center": {
+      "latitude": 27.1024,
+      "longitude": 93.6127
+    },
+    "radius": 2200,
+    "risk_level": "medium",
+    "alert_count": 4,
+    "reason": "Remote location, communication issues",
+    "color": "#f59e0b",
+    "intensity": 0.5
+  },
+  {
+    "id": "RZ-006",
+    "name": "Loktak Lake Recreation Zone",
+    "center": {
+      "latitude": 24.7628,
+      "longitude": 93.9229
+    },
+    "radius": 2500,
+    "risk_level": "safe",
+    "alert_count": 0,
+    "reason": "Popular tourist destination with good infrastructure",
+    "color": "#16a34a",
+    "intensity": 0.6
+  },
+  {
+    "id": "RZ-007",
+    "name": "Dzukou Valley Trek Route",
+    "center": {
+      "latitude": 25.1594,
+      "longitude": 94.9099
+    },
+    "radius": 1800,
+    "risk_level": "medium",
+    "alert_count": 6,
+    "reason": "Challenging terrain, weather dependent",
+    "color": "#f59e0b",
+    "intensity": 0.7
+  },
+  {
+    "id": "RZ-008",
+    "name": "Guwahati Urban Safe Zone",
+    "center": {
+      "latitude": 26.1445,
+      "longitude": 91.7362
+    },
+    "radius": 4000,
+    "risk_level": "safe",
+    "alert_count": 2,
+    "reason": "Major city with excellent emergency services",
+    "color": "#22c55e",
+    "intensity": 0.8
+  },
+  {
+    "id": "RZ-009",
+    "name": "Aizawl Hill Station",
+    "center": {
+      "latitude": 23.7307,
+      "longitude": 92.7173
+    },
+    "radius": 2000,
+    "risk_level": "high",
+    "alert_count": 9,
+    "reason": "Steep terrain, frequent landslides during monsoon",
+    "color": "#dc2626",
+    "intensity": 0.8
+  },
+  {
+    "id": "RZ-010",
+    "name": "Umiam Lake Resort Area",
+    "center": {
+      "latitude": 25.5788,
+      "longitude": 91.8933
+    },
+    "radius": 1500,
+    "risk_level": "safe",
+    "alert_count": 1,
+    "reason": "Well-developed resort area with safety measures",
+    "color": "#16a34a",
+    "intensity": 0.6
+  },
+  {
+    "id": "RZ-011",
+    "name": "Dawki Border Crossing",
+    "center": {
+      "latitude": 25.1261,
+      "longitude": 91.7680
+    },
+    "radius": 1200,
+    "risk_level": "medium",
+    "alert_count": 3,
+    "reason": "Border area with security protocols",
+    "color": "#f59e0b",
+    "intensity": 0.5
+  },
+  {
+    "id": "RZ-012",
+    "name": "Mawlynnong Model Village",
+    "center": {
+      "latitude": 25.2031,
+      "longitude": 91.8933
+    },
+    "radius": 800,
+    "risk_level": "safe",
+    "alert_count": 0,
+    "reason": "Clean village with community-based tourism",
+    "color": "#22c55e",
+    "intensity": 0.9
+  },
+  {
+    "id": "RZ-013",
+    "name": "Kohima War Memorial Zone",
+    "center": {
+      "latitude": 25.6701,
+      "longitude": 94.1077
+    },
+    "radius": 1600,
+    "risk_level": "safe",
+    "alert_count": 1,
+    "reason": "Protected heritage site with security",
+    "color": "#16a34a",
+    "intensity": 0.7
+  },
+  {
+    "id": "RZ-014",
+    "name": "Gangtok Cable Car Zone",
+    "center": {
+      "latitude": 27.3389,
+      "longitude": 88.6065
+    },
+    "radius": 1400,
+    "risk_level": "safe",
+    "alert_count": 0,
+    "reason": "Modern tourist infrastructure",
+    "color": "#22c55e",
+    "intensity": 0.8
+  },
+  {
+    "id": "RZ-015",
+    "name": "Remote Mountain Pass",
+    "center": {
+      "latitude": 27.2615,
+      "longitude": 92.4127
+    },
+    "radius": 2500,
+    "risk_level": "high",
+    "alert_count": 15,
+    "reason": "Extreme weather, isolation, communication blackouts",
+    "color": "#dc2626",
+    "intensity": 1.0
+  }
+]

@@ -9,6 +9,8 @@ continuous stream of location data and the critical panic button functionality.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any
+from datetime import datetime
+import logging
 
 # Database dependencies
 from ...db.session import get_db
@@ -18,12 +20,15 @@ from ...crud import crud_tourist
 
 # Import services for alert broadcasting and ledger logging
 from ...services import alert_service, ledger_service, accessibility_service
+from ...services.route_monitor_service import route_monitor_service
+from ...ml.risk_model import predict_risk
 
 # Import schemas
 from ...schemas import tourist as schemas
 
 # Create router instance
 router = APIRouter(prefix="/tourists", tags=["Tourist Tracking & Alerts"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/{tourist_id}/location", status_code=status.HTTP_201_CREATED)
@@ -79,11 +84,59 @@ async def log_tourist_location(
             tourist_id=tourist_id,
             location=location_data
         )
+
+        tourist = crud_tourist.get_tourist(db, tourist_id)
+        tourist_name = tourist.name if tourist else f"Tourist-{tourist_id[:8]}"
+
+        prediction = predict_risk(
+            latitude=location_data.latitude,
+            longitude=location_data.longitude,
+            timestamp=location_log.timestamp,
+            db=db
+        )
+
+        route_deviation = route_monitor_service.check_route_deviation(
+            tourist_id=tourist_id,
+            latitude=location_data.latitude,
+            longitude=location_data.longitude,
+            threshold_meters=100.0,
+        )
+
+        if route_deviation:
+            await alert_service.create_and_broadcast_alert(
+                user_id=tourist_id,
+                alert_type="ROUTE_DEVIATION",
+                latitude=location_data.latitude,
+                longitude=location_data.longitude,
+                risk_score=float(prediction["risk_score"]),
+                extra_payload={
+                    "name": tourist_name,
+                    "deviation_meters": route_deviation["deviation_meters"],
+                    "threshold_meters": route_deviation["threshold_meters"],
+                    "timestamp": location_log.timestamp.isoformat(),
+                },
+            )
+
+        if float(prediction["risk_score"]) > 0.75:
+            await alert_service.create_and_broadcast_alert(
+                user_id=tourist_id,
+                alert_type="HIGH_RISK_AREA",
+                latitude=location_data.latitude,
+                longitude=location_data.longitude,
+                risk_score=float(prediction["risk_score"]),
+                extra_payload={
+                    "name": tourist_name,
+                    "danger_level": prediction["danger_level"],
+                    "timestamp": location_log.timestamp.isoformat(),
+                },
+            )
         
         # Return success confirmation
         return {
             "status": "success",
-            "message": "Location logged."
+            "message": "Location logged.",
+            "risk_score": float(prediction["risk_score"]),
+            "danger_level": prediction["danger_level"],
         }
         
     except Exception as e:
@@ -92,6 +145,33 @@ async def log_tourist_location(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to log location: {str(e)}"
+        )
+
+
+@router.post("/{tourist_id}/route", status_code=status.HTTP_200_OK)
+async def set_planned_route(
+    tourist_id: str,
+    route: schemas.PlannedRouteRequest,
+) -> Dict[str, Any]:
+    """
+    Register a tourist's planned route for route deviation monitoring.
+    """
+    try:
+        coordinates = [(point.latitude, point.longitude) for point in route.coordinates]
+        route_monitor_service.set_planned_route(tourist_id=tourist_id, coordinates=coordinates)
+        return {
+            "status": "success",
+            "message": "Planned route registered.",
+            "points": len(coordinates),
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to register planned route for tourist %s", tourist_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to register planned route: {exc}"
         )
 
 

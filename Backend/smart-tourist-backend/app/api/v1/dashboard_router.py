@@ -46,6 +46,29 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
+@router.websocket("/ws/user/{user_id}")
+async def user_websocket_endpoint(websocket: WebSocket, user_id: str):
+    """
+    WebSocket endpoint for user-specific real-time alerts.
+
+    Args:
+        websocket: The WebSocket connection from user client
+        user_id: Tourist/user UUID for scoped notifications
+    """
+    await manager.connect_user(user_id, websocket)
+
+    try:
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        manager.disconnect(websocket)
+
+
 @router.get("/ledger/verify", status_code=200)
 def verify_ledger_integrity(db: Session = Depends(get_db)):
     """

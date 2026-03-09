@@ -1,334 +1,191 @@
-"""
-Heuristic Anomaly Detection Engine
-
-This service implements rule-based anomaly detection for tourist safety:
-- Inactivity detection (tourists inactive for > 60 minutes)
-- Route deviation detection (deviation from planned itinerary)
-- High-risk zone detection (geo-fencing for dangerous areas)
-
-The service runs as a background task, periodically analyzing all active tourists
-and integrating with existing alert and ledger services.
-"""
+"""Async anomaly detection engine for periodic backend monitoring."""
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import List, Optional
+import logging
+
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
-from shapely.geometry import Point, LineString
-from geoalchemy2.shape import to_shape
 
-from app.db.session import get_db
+from app.crud import crud_tourist
 from app.db import models
-from app.crud import crud_tourist, crud_dashboard
-from app.services import alert_service, ledger_service, ml_anomaly_service
+from app.db.session import get_db
+from app.ml.risk_model import predict_risk
+from app.services import alert_service, ml_anomaly_service
+from app.services.route_monitor_service import route_monitor_service
 
+logger = logging.getLogger(__name__)
 
-# Configuration constants
 INACTIVITY_THRESHOLD_MINUTES = 60
-ROUTE_DEVIATION_THRESHOLD_METERS = 500  # 500 meters from planned route
-BACKGROUND_TASK_INTERVAL_SECONDS = 60  # Run checks every minute
+ROUTE_DEVIATION_THRESHOLD_METERS = 100
+HIGH_RISK_THRESHOLD = 0.75
+BACKGROUND_TASK_INTERVAL_SECONDS = 60
 
 
-def check_inactivity(db: Session, tourist: models.Tourist) -> None:
-    """
-    Check if a tourist has been inactive for longer than the threshold.
-    
-    Args:
-        db: Database session
-        tourist: Tourist model instance
-        
-    Triggers:
-        - Inactivity alert via alert_service
-        - Anomaly event log via ledger_service
-    """
-    # Get the latest location log for this tourist
-    latest_location = crud_tourist.get_latest_location_by_tourist_id(db, tourist.id)
-    
-    if not latest_location:
-        # No location data - this is also an anomaly
-        print(f"⚠️  No location data found for tourist {tourist.id}")
+async def check_inactivity(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
+    """Check inactivity threshold and trigger alert if exceeded."""
+    inactivity_delta = datetime.utcnow() - latest_location.timestamp
+    if inactivity_delta <= timedelta(minutes=INACTIVITY_THRESHOLD_MINUTES):
         return
-    
-    # Calculate time since last location update
-    time_since_last_update = datetime.utcnow() - latest_location.timestamp
-    
-    if time_since_last_update > timedelta(minutes=INACTIVITY_THRESHOLD_MINUTES):
-        print(f"🚨 Inactivity detected for tourist {tourist.id}: {time_since_last_update}")
-        
-        # Trigger inactivity alert
-        alert_service.trigger_inactivity_alert(
-            db=db,
-            tourist_id=tourist.id,
-            last_seen_location={"latitude": latest_location.latitude, "longitude": latest_location.longitude},
-            minutes_inactive=int(time_since_last_update.total_seconds() / 60)
-        )
-        
-        # Log anomaly event to ledger
-        ledger_service.log_anomaly_event_to_ledger(
-            db=db,
-            tourist_id=tourist.id,
-            anomaly_type="INACTIVITY",
-            details={
-                "last_location": {
-                    "latitude": latest_location.latitude,
-                    "longitude": latest_location.longitude,
-                    "timestamp": latest_location.timestamp.isoformat()
-                },
-                "minutes_inactive": int(time_since_last_update.total_seconds() / 60),
-                "threshold_minutes": INACTIVITY_THRESHOLD_MINUTES
-            }
-        )
 
+    inactivity_minutes = int(inactivity_delta.total_seconds() / 60)
+    await alert_service.trigger_inactivity_alert(
+        tourist_id=str(tourist.id),
+        name=tourist.name,
+        last_location={
+            "latitude": latest_location.latitude,
+            "longitude": latest_location.longitude,
+            "timestamp": latest_location.timestamp.isoformat(),
+        },
+        last_seen=latest_location.timestamp.isoformat(),
+        inactivity_duration=f"{inactivity_minutes} minutes",
+    )
 
-def check_route_deviation(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
-    """
-    Check if a tourist has deviated significantly from their planned itinerary.
-    
-    Args:
-        db: Database session
-        tourist: Tourist model instance
-        latest_location: Latest location log entry
-        
-    Triggers:
-        - Location alert via alert_service
-        - Anomaly event log via ledger_service
-    """
-    # Get the tourist's itinerary points ordered by sequence
-    itinerary_points = db.query(models.TouristItinerary).filter(
-        models.TouristItinerary.tourist_id == tourist.id
-    ).order_by(models.TouristItinerary.sequence_order).all()
-    
-    if len(itinerary_points) < 2:
-        # Need at least 2 points to create a route
+async def check_route_deviation(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
+    """Check route deviation from planned route and trigger alert."""
+    deviation = route_monitor_service.check_route_deviation(
+        tourist_id=str(tourist.id),
+        latitude=latest_location.latitude,
+        longitude=latest_location.longitude,
+        threshold_meters=ROUTE_DEVIATION_THRESHOLD_METERS,
+    )
+    if not deviation:
         return
-    
-    # Convert itinerary points to a LineString
-    coordinates = []
-    for point in itinerary_points:
-        # Convert PostGIS geometry to shapely geometry
-        shapely_point = to_shape(point.location)
-        coordinates.append((shapely_point.x, shapely_point.y))
-    
-    planned_route = LineString(coordinates)
-    
-    # Create point for current location
-    current_point = Point(latest_location.longitude, latest_location.latitude)
-    
-    # Calculate distance from current location to planned route
-    distance_meters = planned_route.distance(current_point) * 111000  # Rough conversion to meters
-    
-    if distance_meters > ROUTE_DEVIATION_THRESHOLD_METERS:
-        print(f"🚨 Route deviation detected for tourist {tourist.id}: {distance_meters:.0f}m from planned route")
-        
-        # Trigger location alert
-        alert_service.trigger_location_alert(
-            db=db,
-            tourist_id=tourist.id,
-            current_location={"latitude": latest_location.latitude, "longitude": latest_location.longitude},
-            alert_type="ROUTE_DEVIATION"
-        )
-        
-        # Log anomaly event to ledger
-        ledger_service.log_anomaly_event_to_ledger(
-            db=db,
-            tourist_id=tourist.id,
-            anomaly_type="ROUTE_DEVIATION",
-            details={
-                "current_location": {
-                    "latitude": latest_location.latitude,
-                    "longitude": latest_location.longitude,
-                    "timestamp": latest_location.timestamp.isoformat()
-                },
-                "deviation_distance_meters": distance_meters,
-                "threshold_meters": ROUTE_DEVIATION_THRESHOLD_METERS,
-                "itinerary_points_count": len(itinerary_points)
-            }
-        )
 
+    prediction = predict_risk(
+        latitude=latest_location.latitude,
+        longitude=latest_location.longitude,
+        timestamp=latest_location.timestamp,
+        db=db,
+    )
 
-def check_high_risk_zone(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
-    """
-    Check if a tourist has entered a high-risk zone.
-    
-    Args:
-        db: Database session
-        tourist: Tourist model instance
-        latest_location: Latest location log entry
-        
-    Triggers:
-        - Location alert via alert_service
-        - Anomaly event log via ledger_service
-    """
-    # Create PostGIS point from current location
-    current_point = func.ST_MakePoint(latest_location.longitude, latest_location.latitude)
-    
-    # Check if current location is within any high-risk zone
-    high_risk_zones = db.query(models.HighRiskZone).filter(
-        func.ST_Contains(models.HighRiskZone.geometry, current_point)
-    ).all()
-    
-    for zone in high_risk_zones:
-        print(f"🚨 High-risk zone entry detected for tourist {tourist.id}: {zone.name}")
-        
-        # Trigger location alert
-        alert_service.trigger_location_alert(
-            db=db,
-            tourist_id=tourist.id,
-            current_location={"latitude": latest_location.latitude, "longitude": latest_location.longitude},
-            alert_type="HIGH_RISK_ZONE"
-        )
-        
-        # Log anomaly event to ledger
-        ledger_service.log_anomaly_event_to_ledger(
-            db=db,
-            tourist_id=tourist.id,
-            anomaly_type="HIGH_RISK_ZONE",
-            details={
-                "current_location": {
-                    "latitude": latest_location.latitude,
-                    "longitude": latest_location.longitude,
-                    "timestamp": latest_location.timestamp.isoformat()
-                },
-                "zone_name": zone.name,
-                "zone_id": zone.id
-            }
-        )
+    await alert_service.create_and_broadcast_alert(
+        user_id=str(tourist.id),
+        alert_type="ROUTE_DEVIATION",
+        latitude=latest_location.latitude,
+        longitude=latest_location.longitude,
+        risk_score=float(prediction["risk_score"]),
+        extra_payload={
+            "name": tourist.name,
+            "deviation_meters": deviation["deviation_meters"],
+            "threshold_meters": deviation["threshold_meters"],
+            "timestamp": latest_location.timestamp.isoformat(),
+        },
+    )
 
+async def check_high_risk_zone(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
+    """Check ML risk score and trigger high-risk-zone alert."""
+    prediction = predict_risk(
+        latitude=latest_location.latitude,
+        longitude=latest_location.longitude,
+        timestamp=latest_location.timestamp,
+        db=db,
+    )
 
-def run_single_tourist_check(db: Session, tourist_id: str) -> None:
-    """
-    Run all anomaly checks for a single tourist.
-    
-    Args:
-        db: Database session
-        tourist_id: UUID of the tourist to check
-    """
-    # Get tourist details
+    risk_score = float(prediction["risk_score"])
+    if risk_score <= HIGH_RISK_THRESHOLD:
+        return
+
+    await alert_service.create_and_broadcast_alert(
+        user_id=str(tourist.id),
+        alert_type="HIGH_RISK_AREA",
+        latitude=latest_location.latitude,
+        longitude=latest_location.longitude,
+        risk_score=risk_score,
+        extra_payload={
+            "name": tourist.name,
+            "danger_level": prediction["danger_level"],
+            "timestamp": latest_location.timestamp.isoformat(),
+        },
+    )
+
+async def check_behavioral_ml_anomaly(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
+    """Check IsolationForest-based behavioral anomaly and alert if detected."""
+    anomaly = ml_anomaly_service.detect_behavioral_anomalies(
+        db=db,
+        tourist_id=str(tourist.id),
+        latest_location=latest_location,
+    )
+    if not anomaly:
+        return
+
+    anomaly_score = float(anomaly.get("details", {}).get("anomaly_score", 0.0))
+    risk_score = max(0.0, min(1.0, (abs(anomaly_score) + 0.2)))
+
+    await alert_service.create_and_broadcast_alert(
+        user_id=str(tourist.id),
+        alert_type="ANOMALY_DETECTION",
+        latitude=latest_location.latitude,
+        longitude=latest_location.longitude,
+        risk_score=risk_score,
+        extra_payload={
+            "name": tourist.name,
+            "message": anomaly.get("message", "Behavioral anomaly detected"),
+            "detected_by": "ML_ISOLATION_FOREST",
+            "anomaly_score": anomaly_score,
+            "details": anomaly.get("details", {}),
+            "timestamp": latest_location.timestamp.isoformat(),
+        },
+    )
+
+async def run_single_tourist_check(db: Session, tourist_id: str) -> None:
+    """Run anomaly checks for a single tourist."""
     tourist = crud_tourist.get_tourist(db, tourist_id)
     if not tourist:
-        print(f"❌ Tourist {tourist_id} not found")
         return
-    
-    # Get latest location for this tourist
-    latest_location = crud_tourist.get_latest_location_by_tourist_id(db, tourist_id)
+
+    latest_location = crud_tourist.get_latest_location_by_tourist_id(db, tourist.id)
     if not latest_location:
-        print(f"📍 No location data for tourist {tourist_id}")
         return
-    
-    print(f"🔍 Running anomaly checks for tourist {tourist_id}")
-    
-    # Run all anomaly checks
-    try:
-        check_inactivity(db, tourist)
-        
-        if latest_location:  # Additional check since inactivity might not have location
-            check_route_deviation(db, tourist, latest_location)
-            check_high_risk_zone(db, tourist, latest_location)
-            
-            # ML-based behavioral anomaly detection
-            ml_anomaly = ml_anomaly_service.detect_behavioral_anomalies(db, tourist.id, latest_location)
-            if ml_anomaly:
-                # Trigger a new, specific alert for unusual behavior
-                alert_service.trigger_alert(
-                    alert_type="UNUSUAL_BEHAVIOR_ALERT",
-                    tourist_id=str(tourist.id),
-                    details={
-                        "name": tourist.name,
-                        "message": ml_anomaly['message'],
-                        "detected_by": "ML_ISOLATION_FOREST",
-                        "anomaly_score": ml_anomaly.get('details', {}).get('anomaly_score', 0),
-                        "detected_features": ml_anomaly.get('details', {}).get('detected_features', []),
-                        "current_location": {
-                            "latitude": latest_location.latitude,
-                            "longitude": latest_location.longitude,
-                            "timestamp": latest_location.timestamp.isoformat()
-                        }
-                    }
-                )
-                # Log this new type of anomaly to the ledger
-                ledger_service.log_anomaly_event_to_ledger(
-                    db=db,
-                    tourist_id=tourist.id,
-                    anomaly_type="BEHAVIORAL_ML",
-                    details=ml_anomaly
-                )
-            
-    except Exception as e:
-        print(f"❌ Error running checks for tourist {tourist_id}: {e}")
-        
-        # Log error to ledger
-        ledger_service.log_system_event_to_ledger(
-            db=db,
-            event_type="ANOMALY_CHECK_ERROR",
-            details={
-                "tourist_id": str(tourist_id),
-                "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
+
+    await check_inactivity(db, tourist, latest_location)
+    await check_route_deviation(db, tourist, latest_location)
+    await check_high_risk_zone(db, tourist, latest_location)
+    await check_behavioral_ml_anomaly(db, tourist, latest_location)
 
 
 async def run_anomaly_checks_periodically() -> None:
-    """
-    Background task that runs anomaly checks periodically for all active tourists.
-    
-    This function runs in an infinite loop, checking all tourists every minute.
-    """
-    print("🚀 Starting anomaly detection background task")
-    
+    """Background task that periodically checks anomalies for active tourists."""
+    logger.info("Starting anomaly detection background task")
+
     while True:
+        db_gen = get_db()
+        db = next(db_gen)
         try:
-            # Get database session
-            db = next(get_db())
-            
-            try:
-                # Get all active tourists (those whose trip hasn't ended)
-                current_time = datetime.utcnow()
-                active_tourists = db.query(models.Tourist).filter(
-                    models.Tourist.trip_end_date > current_time
-                ).all()
-                
-                print(f"🔍 Running anomaly checks for {len(active_tourists)} active tourists")
-                
-                # Run checks for each active tourist
-                for tourist in active_tourists:
-                    run_single_tourist_check(db, tourist.id)
-                
-                print(f"✅ Completed anomaly checks for {len(active_tourists)} tourists")
-                
-            finally:
-                db.close()
-                
-        except Exception as e:
-            print(f"❌ Error in anomaly detection background task: {e}")
-        
-        # Wait before next check cycle
+            active_tourists = (
+                db.query(models.Tourist)
+                .filter(models.Tourist.trip_end_date > datetime.utcnow())
+                .all()
+            )
+            for tourist in active_tourists:
+                try:
+                    await run_single_tourist_check(db=db, tourist_id=str(tourist.id))
+                except Exception:
+                    logger.exception("Failed anomaly checks for tourist %s", tourist.id)
+        except Exception:
+            logger.exception("Error in anomaly detection cycle")
+        finally:
+            db_gen.close()
+
         await asyncio.sleep(BACKGROUND_TASK_INTERVAL_SECONDS)
 
 
 def get_anomaly_detection_status() -> dict:
-    """
-    Get current status of the anomaly detection system.
-    
-    Returns:
-        Dictionary with system status information
-    """
+    """Expose anomaly engine status and configuration."""
     return {
         "service": "Anomaly Detection Engine",
         "status": "running",
         "configuration": {
             "inactivity_threshold_minutes": INACTIVITY_THRESHOLD_MINUTES,
             "route_deviation_threshold_meters": ROUTE_DEVIATION_THRESHOLD_METERS,
-            "check_interval_seconds": BACKGROUND_TASK_INTERVAL_SECONDS
+            "high_risk_threshold": HIGH_RISK_THRESHOLD,
+            "check_interval_seconds": BACKGROUND_TASK_INTERVAL_SECONDS,
         },
         "features": [
             "Inactivity Detection",
-            "Route Deviation Detection", 
-            "High-Risk Zone Geo-fencing",
+            "Route Deviation Detection",
+            "High-Risk Zone Detection (ML Risk Score)",
             "Behavioral ML Anomaly Detection",
             "Background Monitoring",
-            "Alert Integration",
-            "Ledger Integration"
-        ]
+            "Central Alert Pipeline",
+        ],
     }

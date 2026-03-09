@@ -89,6 +89,17 @@ class LocationCreate(BaseModel):
         }
 
 
+class RoutePoint(BaseModel):
+    """Schema for one coordinate in a planned route."""
+    latitude: float
+    longitude: float
+
+
+class PlannedRouteRequest(BaseModel):
+    """Schema for planned route submission."""
+    coordinates: List[RoutePoint]
+
+
 # --- NEW SCHEMAS FOR ACCESSIBILITY & TEXT ALERTS ---
 
 class TextAlertRequest(BaseModel):

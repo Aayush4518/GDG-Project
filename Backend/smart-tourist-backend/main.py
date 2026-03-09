@@ -6,9 +6,11 @@ from app.api.v1 import ledger_router
 from app.api.v1 import notification_router
 from app.api.v1 import auth_router
 from app.api.v1 import tourist_router
+from app.api.v1 import risk_router
 from app.db.base import Base
 from app.db.session import engine
 from app.services.anomaly_service import run_anomaly_checks_periodically, get_anomaly_detection_status
+from app.ml.model_loader import preload_model
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -43,6 +45,7 @@ app.include_router(auth_router.router, prefix="/api/v1", tags=["Authentication"]
 
 # Include the tourist tracking and panic alert router for location data and emergency response
 app.include_router(tourist_router.router, prefix="/api/v1", tags=["Tourist Tracking"])
+app.include_router(risk_router.router, prefix="/api/v1", tags=["Risk Prediction"])
 
 
 @app.on_event("startup")
@@ -52,6 +55,7 @@ async def startup_event():
     """
     print("🚀 Starting Smart Tourist Safety System")
     print("🔍 Launching anomaly detection background task...")
+    preload_model()
     
     # Start the anomaly detection background task
     asyncio.create_task(run_anomaly_checks_periodically())

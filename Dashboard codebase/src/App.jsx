@@ -422,55 +422,40 @@ function Dashboard({ user }) {
   const [isLoading, setIsLoading] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
 
-  // Load initial data - prioritize massive dummy data for demonstration
+  // Load initial data from backend first, fallback to dummy data.
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setIsLoading(true);
-        
-        // **PRIORITY: Load massive dummy data first for demo purposes**
-        console.log('🚀 Loading massive dummy dataset (500+ entries)...');
-        
-        // Load massive tourists dataset
-        const touristsResponse = await fetch('/massive_tourists.json');
-        const touristsData = await touristsResponse.json();
+        const touristsData = await apiService.getActiveTourists();
+        const analyticsData = await apiService.getAnalytics();
         setTourists(touristsData);
-        console.log(`✅ Loaded ${touristsData.length} tourists from massive dataset`);
-        
-        // Load massive alerts dataset
-        const alertsResponse = await fetch('/massive_alerts.json');
-        const alertsData = await alertsResponse.json();
-        setAlerts(alertsData);
-        console.log(`✅ Loaded ${alertsData.length} alerts from massive dataset`);
-        
-        // Load analytics data
-        const analyticsResponse = await fetch('/analytics.json');
-        const analyticsData = await analyticsResponse.json();
         setAnalytics(analyticsData);
-        console.log('✅ Loaded analytics from dummy data');
-        
-        // Load risk zones from backend (fallback to dummy if needed)
+
         try {
           const riskZonesData = await apiService.getRiskZones();
           setRiskZones(riskZonesData);
-        } catch (error) {
-          console.log('Using default risk zones');
+        } catch (_error) {
           setRiskZones([]);
         }
-        
-        console.log('🎊 Massive dummy data loaded successfully!');
-        setToast('Loaded 500+ demo entries for comprehensive dashboard view');
+        setToast('Connected to live backend data.');
       } catch (error) {
-        console.error('Failed to load dummy data:', error);
-        // Fallback to backend if dummy data fails
+        console.error('Failed to load backend data:', error);
+        // Fallback to dummy data when backend is unavailable.
         try {
-          const touristsData = await apiService.getActiveTourists();
-          const analyticsData = await apiService.getAnalytics();
+          const touristsResponse = await fetch('/massive_tourists.json');
+          const touristsData = await touristsResponse.json();
+          const alertsResponse = await fetch('/massive_alerts.json');
+          const alertsData = await alertsResponse.json();
+          const analyticsResponse = await fetch('/analytics.json');
+          const analyticsData = await analyticsResponse.json();
+
           setTourists(touristsData);
+          setAlerts(alertsData);
           setAnalytics(analyticsData);
-          console.log('Fallback to backend data successful');
-        } catch (backendError) {
-          console.error('Both dummy and backend data failed:', backendError);
+          setToast('Loaded dummy data fallback.');
+        } catch (fallbackError) {
+          console.error('Both backend and dummy data failed:', fallbackError);
           setToast('Failed to load any data. Please refresh the page.');
         }
       } finally {
@@ -485,33 +470,48 @@ function Dashboard({ user }) {
   useEffect(() => {
     const handleWebSocketMessage = (data) => {
       console.log('WebSocket message received:', data);
-      
-      switch (data.event_type) {
+
+      // Supports:
+      // 1) New payload: { event, alert_type, location, risk_score, alert }
+      // 2) Legacy payload: { event_type, payload: { tourist_id, ... } }
+      const payload = data?.payload || data?.alert || {};
+      const eventType = data?.alert_type || data?.event_type;
+      const touristId = payload?.user_id || payload?.tourist_id || data?.tourist_id || data?.user_id;
+      const latitude = data?.location?.lat ?? payload?.latitude ?? payload?.location?.latitude ?? data?.latitude;
+      const longitude = data?.location?.lon ?? payload?.longitude ?? payload?.location?.longitude ?? data?.longitude;
+      const riskScore = data?.risk_score ?? payload?.risk_score;
+      const severity = riskScore >= 0.75 ? 'Critical' : riskScore >= 0.4 ? 'High' : 'Medium';
+
+      switch (eventType) {
         case 'PANIC_ALERT':
         case 'INACTIVITY_ALERT':
         case 'UNUSUAL_BEHAVIOR_ALERT':
+        case 'ROUTE_DEVIATION':
+        case 'HIGH_RISK_AREA':
+        case 'ANOMALY_DETECTION':
+        case 'LOCATION_ALERT':
           // Update active alerts
           setActiveAlerts(prev => ({
             ...prev,
-            [data.tourist_id]: true
+            [touristId]: true
           }));
           
           // Add to alerts list
           setAlerts(prev => [{
             id: `ALR-${Date.now()}`,
-            type: data.event_type.replace('_', ' '),
-            severity: data.severity || 'High',
-            location: `${data.latitude?.toFixed(4)}, ${data.longitude?.toFixed(4)}`,
-            district: data.district || 'Unknown',
+            type: eventType.replaceAll('_', ' '),
+            severity,
+            location: latitude && longitude ? `${Number(latitude).toFixed(4)}, ${Number(longitude).toFixed(4)}` : 'Unknown',
+            district: payload?.district || 'Unknown',
             timeMinutesAgo: 0,
-            touristId: data.tourist_id
+            touristId: touristId || 'unknown'
           }, ...prev]);
           
           // Update tourist location if provided
-          if (data.latitude && data.longitude) {
+          if (latitude && longitude && touristId) {
             setTourists(prev => prev.map(tourist => 
-              tourist.tourist_id === data.tourist_id 
-                ? { ...tourist, last_known_location: { latitude: data.latitude, longitude: data.longitude } }
+              String(tourist.tourist_id) === String(touristId)
+                ? { ...tourist, last_known_location: { latitude: Number(latitude), longitude: Number(longitude) } }
                 : tourist
             ));
           }
@@ -521,21 +521,23 @@ function Dashboard({ user }) {
           // Remove from active alerts
           setActiveAlerts(prev => ({
             ...prev,
-            [data.tourist_id]: false
+            [touristId]: false
           }));
           break;
           
         case 'LOCATION_UPDATE':
           // Update tourist location
-          setTourists(prev => prev.map(tourist => 
-            tourist.tourist_id === data.tourist_id 
-              ? { ...tourist, last_known_location: { latitude: data.latitude, longitude: data.longitude } }
-              : tourist
-          ));
+          if (latitude && longitude && touristId) {
+            setTourists(prev => prev.map(tourist => 
+              String(tourist.tourist_id) === String(touristId)
+                ? { ...tourist, last_known_location: { latitude: Number(latitude), longitude: Number(longitude) } }
+                : tourist
+            ));
+          }
           break;
           
         default:
-          console.log('Unknown event type:', data.event_type);
+          console.log('Unknown event type:', eventType);
       }
     };
 

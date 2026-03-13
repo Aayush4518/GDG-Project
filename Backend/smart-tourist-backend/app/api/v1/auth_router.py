@@ -6,7 +6,11 @@ It serves as the entry point for new tourists and integrates with the ledger
 service for tamper-evident registration logging.
 """
 
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from jose import jwt
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 
@@ -22,8 +26,63 @@ from ...services import ledger_service
 # Import schemas
 from ...schemas import tourist as schemas
 
+# Import settings for credentials and secret key
+from ...core.config import settings
+
 # Create router instance
 router = APIRouter(prefix="/auth", tags=["Authentication & Registration"])
+
+ALGORITHM = "HS256"
+TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 hours
+
+
+# --------------------------------------------------------------------------- #
+#  Authority (dashboard) login                                                 #
+# --------------------------------------------------------------------------- #
+
+class AuthorityLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthorityLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: str
+    username: str
+
+
+@router.post("/authority/login", response_model=AuthorityLoginResponse)
+async def authority_login(credentials: AuthorityLoginRequest) -> AuthorityLoginResponse:
+    """
+    Login endpoint for dashboard authorities (Police / Tourism officers).
+
+    Validates credentials against environment-configured accounts and returns
+    a signed JWT token that the dashboard must include in subsequent requests
+    via the Authorization: Bearer <token> header.
+    """
+    username = credentials.username.strip().lower()
+    password = credentials.password
+
+    if username == settings.POLICE_USERNAME.lower() and password == settings.POLICE_PASSWORD:
+        role = "Police"
+    elif username == settings.TOURISM_USERNAME.lower() and password == settings.TOURISM_PASSWORD:
+        role = "Tourism"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = {
+        "sub": username,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRE_MINUTES),
+    }
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+    return AuthorityLoginResponse(access_token=token, role=role, username=username)
 
 
 @router.post("/register", response_model=schemas.RegistrationResponse, status_code=status.HTTP_201_CREATED)

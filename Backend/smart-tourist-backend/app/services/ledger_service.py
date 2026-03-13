@@ -1,8 +1,20 @@
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..db import models
+
+
+def _to_naive_utc(ts: datetime) -> datetime:
+    """Normalise any datetime to a timezone-naive UTC datetime.
+
+    PostgreSQL TIMESTAMPTZ columns return timezone-aware datetimes after a
+    round-trip.  The hash was originally computed with a naive UTC datetime, so
+    we strip the tzinfo here to keep both sides of the comparison identical.
+    """
+    if ts.tzinfo is not None:
+        return ts.replace(tzinfo=None)
+    return ts
 
 
 def hash_string(string: str) -> str:
@@ -20,21 +32,27 @@ def hash_string(string: str) -> str:
 
 def get_latest_block_hash(db: Session) -> str:
     """
-    Retrieves the hash of the latest block in the ledger
-    
+    Retrieves the hash of the latest block in the ledger.
+
+    Uses SELECT FOR UPDATE to prevent two concurrent writers from reading the
+    same previous_hash and creating a forked / invalid chain.
+
     Args:
         db: Database session
-        
+
     Returns:
         The current_hash of the latest block, or genesis hash if no blocks exist
     """
-    latest_block = db.query(models.IDLedger).order_by(models.IDLedger.id.desc()).first()
-    
+    latest_block = (
+        db.query(models.IDLedger)
+        .order_by(models.IDLedger.id.desc())
+        .with_for_update()
+        .first()
+    )
+
     if latest_block is None:
-        # Return genesis hash - string of 64 zeros for the first block
         return '0' * 64
-    else:
-        return latest_block.current_hash
+    return latest_block.current_hash
 
 
 def add_new_block(db: Session, tourist_id: str, event_data: dict) -> models.IDLedger:
@@ -168,8 +186,10 @@ def verify_chain(db: Session) -> bool:
     
     # Verify each block in sequence
     for block in all_blocks:
-        # Recreate the deterministic data string using the same logic as add_new_block
-        data_to_hash_string = f"{block.tourist_id}{block.timestamp.isoformat()}{json.dumps(block.data, sort_keys=True)}"
+        # Normalise to naive UTC so the isoformat() string matches what was
+        # produced at write-time (datetime.utcnow() is always timezone-naive).
+        ts_naive = _to_naive_utc(block.timestamp)
+        data_to_hash_string = f"{block.tourist_id}{ts_naive.isoformat()}{json.dumps(block.data, sort_keys=True)}"
         
         # Recalculate what the hash should be
         recalculated_hash = hash_string(f"{last_verified_hash}{data_to_hash_string}")

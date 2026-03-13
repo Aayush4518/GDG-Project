@@ -153,7 +153,7 @@ async def process_text_alert(
         # Step 6: Trigger panic alert via alert service
         # Create timestamp for the alert
         from datetime import datetime
-        alert_timestamp = datetime.utcnow()
+        alert_timestamp = datetime.now(timezone.utc)
         
         # Add detected language and keyword to location data for context
         enhanced_location_data = {

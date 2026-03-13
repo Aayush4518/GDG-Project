@@ -163,7 +163,7 @@ async def set_planned_route(
             "status": "success",
             "message": "Planned route registered.",
             "points": len(coordinates),
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -224,20 +224,20 @@ async def trigger_panic_button(
         ```
     """
     try:
-        # Step 1: **Log the location** - Capture panic location immediately
-        location_log = crud_tourist.create_location_log(
-            db=db,
-            tourist_id=tourist_id,
-            location=location_data
-        )
-        
-        # Step 2: **Verify tourist exists** - Get tourist details for alert
+        # Step 1: **Verify tourist exists** before committing any data
         tourist = crud_tourist.get_tourist(db, tourist_id)
         if tourist is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Tourist not found"
             )
+
+        # Step 2: **Log the location** — tourist is confirmed to exist
+        location_log = crud_tourist.create_location_log(
+            db=db,
+            tourist_id=tourist_id,
+            location=location_data
+        )
         
         # Step 3: **CRITICAL INTEGRATION 1** - Real-time alert broadcasting
         # Prepare location dictionary for alert service

@@ -5,14 +5,12 @@ This module provides HTTP endpoints for Auth & Location services
 to publish LOCATION_UPDATE and PANIC_ALERT events to the dashboard.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, Literal
 from datetime import datetime
 import uuid
 
-from ...db.session import get_db
 from ...services import alert_service
 
 router = APIRouter(prefix="/internal/notifications", tags=["Internal Notification API"])
@@ -106,7 +104,6 @@ def validate_notification_api_key(api_key: Optional[str] = None) -> bool:
 @router.post("/publish", response_model=PublishResponse, status_code=status.HTTP_202_ACCEPTED)
 async def publish_notification(
     event: Dict[str, Any],
-    db: Session = Depends(get_db),
     api_key: Optional[str] = None
 ) -> PublishResponse:
     """
@@ -175,7 +172,7 @@ async def publish_notification(
             event_id=event_id,
             event_type=event_type,
             tourist_id=tourist_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message=f"Event {event_type} published and broadcasted to dashboard",
             broadcasted=True
         )
@@ -194,7 +191,6 @@ async def publish_notification(
 @router.post("/location-update", response_model=PublishResponse, status_code=status.HTTP_202_ACCEPTED)
 async def publish_location_update(
     event: LocationUpdateEvent,
-    db: Session = Depends(get_db),
     api_key: Optional[str] = None
 ) -> PublishResponse:
     """
@@ -229,7 +225,7 @@ async def publish_location_update(
             event_id=event_id,
             event_type="LOCATION_UPDATE",
             tourist_id=event.tourist_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message="Location update published and broadcasted to dashboard",
             broadcasted=True
         )
@@ -246,7 +242,6 @@ async def publish_location_update(
 @router.post("/panic-alert", response_model=PublishResponse, status_code=status.HTTP_202_ACCEPTED)
 async def publish_panic_alert(
     event: PanicAlertEvent,
-    db: Session = Depends(get_db),
     api_key: Optional[str] = None
 ) -> PublishResponse:
     """
@@ -281,7 +276,7 @@ async def publish_panic_alert(
             event_id=event_id,
             event_type="PANIC_ALERT",
             tourist_id=event.tourist_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message="Panic alert published and broadcasted to dashboard",
             broadcasted=True
         )
@@ -319,7 +314,7 @@ async def _handle_panic_alert(event: Dict[str, Any], event_id: str):
         tourist_id=event["tourist_id"],
         name=event["name"],
         location=event["location"],
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.now(timezone.utc).isoformat()
     )
     
     # Additional panic-specific processing could go here

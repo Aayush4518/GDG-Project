@@ -11,6 +11,7 @@ from app.api.v1 import risk_router
 from app.db.base import Base
 from app.db.session import engine
 from app.services.anomaly_service import run_anomaly_checks_periodically, get_anomaly_detection_status
+from app.ml.model_loader import preload_model
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -55,13 +56,19 @@ async def startup_event():
     """
     Initialize background tasks on application startup
     """
-    print("🚀 Starting Smart Tourist Safety System")
-    print("🔍 Launching anomaly detection background task...")
-    
+    print("Starting Smart Tourist Safety System")
+
+    # Pre-load the ML risk model into memory
+    model_loaded = preload_model()
+    if model_loaded:
+        print("ML risk model loaded successfully")
+    else:
+        print("WARNING: ML risk model not found — using heuristic fallback")
+
     # Start the anomaly detection background task
+    print("Launching anomaly detection background task...")
     asyncio.create_task(run_anomaly_checks_periodically())
-    
-    print("✅ Anomaly detection system initialized")
+    print("Anomaly detection system initialized")
 
 
 @app.get("/")

@@ -4,8 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_INSECURE_SECRET = "your-secret-key-here"
-_DEFAULT_SECRET = "change-me-generate-a-strong-secret-key-before-running"
+_INSECURE_SECRETS = {
+    "your-secret-key-here",
+    "change-me-generate-a-strong-secret-key-before-running",
+}
 
 
 class Settings:
@@ -25,7 +27,7 @@ class Settings:
     PROJECT_NAME: str = "Smart Tourist Safety System"
 
     # Security configuration
-    SECRET_KEY: str = os.getenv("SECRET_KEY", _DEFAULT_SECRET)
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-generate-a-strong-secret-key-before-running")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
 
     # Authority (dashboard) credentials — loaded from environment
@@ -46,8 +48,8 @@ class Settings:
         "http://localhost:19006",  # React Native Expo web
     ]
 
-    def __post_init__(self):
-        if self.SECRET_KEY in (_INSECURE_SECRET, _DEFAULT_SECRET):
+    def __init__(self):
+        if self.SECRET_KEY in _INSECURE_SECRETS:
             warnings.warn(
                 "SECRET_KEY is set to an insecure default. "
                 "Set a strong SECRET_KEY in your .env file before deploying.",

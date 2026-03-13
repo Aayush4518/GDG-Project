@@ -16,7 +16,7 @@ shapely==2.0.6
 fpdf2==2.7.9
 
 # ML / Data science
-scikit-learn==1.4.2
+scikit-learn==1.6.1
 pandas==2.2.3
 numpy==1.26.4
 joblib==1.4.2

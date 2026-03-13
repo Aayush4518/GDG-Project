@@ -1,19 +1,16 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Response
-from typing import List
+from typing import Any, Dict, List
 from sqlalchemy.orm import Session
+from ...core.security import require_authority
 from ...db.session import get_db
 from ...db import models
-from ...services import ledger_service
 from ...services import efir_service
-from ...services.websocket_manager import ConnectionManager
+from ...services.websocket_manager import manager
 from ...crud import crud_dashboard
 from ...schemas import tourist as schemas
 
 # Create router instance
 router = APIRouter()
-
-# Create a single, shared instance of the connection manager
-manager = ConnectionManager()
 
 
 @router.websocket("/ws/dashboard")
@@ -46,45 +43,12 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-@router.get("/ledger/verify", status_code=200)
-def verify_ledger_integrity(db: Session = Depends(get_db)):
-    """
-    Endpoint to verify the integrity of the tamper-evident ledger chain
-    
-    This endpoint runs the chain verification logic and returns a clear
-    success or failure status for demonstration purposes.
-    
-    Args:
-        db: Database session dependency
-        
-    Returns:
-        JSON response indicating whether the ledger chain is valid or tampered
-    """
-    try:
-        # Call the ledger service to verify chain integrity
-        is_valid = ledger_service.verify_chain(db)
-        
-        if is_valid:
-            return {
-                "status": "success",
-                "message": "Ledger integrity verified. No tampering detected."
-            }
-        else:
-            return {
-                "status": "error", 
-                "message": "CRITICAL: Ledger tampering detected! Chain is invalid."
-            }
-            
-    except Exception as e:
-        # Handle any unexpected errors during verification
-        return {
-            "status": "error",
-            "message": f"Error during ledger verification: {str(e)}"
-        }
-
 
 @router.get("/active-tourists", response_model=List[schemas.TouristStatus])
-def get_active_tourists(db: Session = Depends(get_db)):
+def get_active_tourists(
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get all active tourists with their last known location for dashboard initialization
     
@@ -123,7 +87,11 @@ def get_active_tourists(db: Session = Depends(get_db)):
 
 
 @router.get("/tourists/{tourist_id}/details", response_model=schemas.TouristDetails)
-def get_tourist_details(tourist_id: str, db: Session = Depends(get_db)):
+def get_tourist_details(
+    tourist_id: str,
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get detailed information for a specific tourist including location history
     
@@ -187,7 +155,10 @@ def get_tourist_details(tourist_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/analytics", response_model=schemas.DashboardAnalytics)
-def get_dashboard_analytics(db: Session = Depends(get_db)):
+def get_dashboard_analytics(
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get dashboard analytics and summary statistics
     
@@ -226,7 +197,8 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
 @router.post("/tourists/{tourist_id}/generate-efir")
 async def generate_efir_for_tourist(
     tourist_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
 ) -> Response:
     """
     Generate an automated E-FIR (Electronic First Information Report) PDF for a missing tourist
@@ -292,7 +264,10 @@ async def generate_efir_for_tourist(
 
 # Risk Zones Endpoint
 @router.get("/risk-zones")
-def get_risk_zones(db: Session = Depends(get_db)):
+def get_risk_zones(
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get risk zones for map display with coordinates and risk levels
     
@@ -306,45 +281,32 @@ def get_risk_zones(db: Session = Depends(get_db)):
         List of risk zone objects with coordinates and risk levels
     """
     try:
-        # Query risk zones from database
         risk_zones = db.query(models.HighRiskZone).all()
-        
-        # Convert to response format - simplified for demonstration
+
         result = []
         for zone in risk_zones:
-            # For now, return sample risk zones since we don't have actual data
-            # In production, you'd extract coordinates from zone.geometry
-            pass
-        
-        # Return sample risk zones for testing
-        return [
-            {
-                "id": "zone_1",
-                "coordinates": [
-                    {"latitude": 25.5941, "longitude": 85.1376},
-                    {"latitude": 25.5941, "longitude": 85.1476},
-                    {"latitude": 25.6041, "longitude": 85.1476},
-                    {"latitude": 25.6041, "longitude": 85.1376}
-                ],
-                "level": "high"
-            },
-            {
-                "id": "zone_2", 
-                "coordinates": [
-                    {"latitude": 26.1445, "longitude": 91.7362},
-                    {"latitude": 26.1445, "longitude": 91.7462},
-                    {"latitude": 26.1545, "longitude": 91.7462},
-                    {"latitude": 26.1545, "longitude": 91.7362}
-                ],
-                "level": "medium"
-            }
-        ]
-        
+            # geometry is a WKBElement from GeoAlchemy2; convert to GeoJSON-like dict
+            try:
+                from geoalchemy2.shape import to_shape
+                shape = to_shape(zone.geometry)
+                coords = [
+                    {"latitude": lat, "longitude": lon}
+                    for lon, lat in shape.exterior.coords
+                ]
+            except Exception:
+                coords = []
+
+            result.append({
+                "id": zone.id,
+                "name": zone.name,
+                "coordinates": coords,
+                "level": "high",
+            })
+
+        return result
+
     except Exception as e:
-        # Return empty array on error - risk zones are optional
         print(f"Error fetching risk zones: {str(e)}")
         return []
 
 
-# The manager instance is exported at module level for use by alert_service
-# This allows the centralized alert service to import and use the manager directly

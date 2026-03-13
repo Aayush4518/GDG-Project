@@ -6,7 +6,7 @@ It serves as the entry point for new tourists and integrates with the ledger
 service for tamper-evident registration logging.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import jwt
@@ -78,7 +78,7 @@ async def authority_login(credentials: AuthorityLoginRequest) -> AuthorityLoginR
     payload = {
         "sub": username,
         "role": role,
-        "exp": datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRE_MINUTES),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRE_MINUTES),
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
@@ -247,7 +247,7 @@ async def get_tourist_info(
         )
 
 
-@router.post("/tourist/{tourist_id}/emergency-contact")
+@router.patch("/tourist/{tourist_id}/emergency-contact")
 async def update_emergency_contact(
     tourist_id: str,
     emergency_contact: Dict[str, Any],

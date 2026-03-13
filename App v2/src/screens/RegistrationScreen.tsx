@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  Platform,
 } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -226,15 +227,28 @@ const RegistrationScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Birth Date */}
             <View style={styles.inputContainer}>
-              <TouchableOpacity 
-                style={styles.inputWrapper}
-                onPress={() => setShowBirthDatePicker(true)}
-              >
-                <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
-                <Text style={[styles.input, formData.birthDate ? styles.inputText : styles.placeholderText]}>
-                  {formData.birthDate || 'Birth Date'}
-                </Text>
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.birthDate}
+                    onChangeText={(v) => handleInputChange('birthDate', v)}
+                    placeholder="Birth Date (YYYY-MM-DD)"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowBirthDatePicker(true)}
+                >
+                  <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                  <Text style={[styles.input, formData.birthDate ? styles.inputText : styles.placeholderText]}>
+                    {formData.birthDate || 'Birth Date'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Emergency Contact Name */}
@@ -268,28 +282,54 @@ const RegistrationScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Trip Start Date */}
             <View style={styles.inputContainer}>
-              <TouchableOpacity 
-                style={styles.inputWrapper}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
-                <Text style={[styles.input, formData.tripStartDate ? styles.inputText : styles.placeholderText]}>
-                  {formData.tripStartDate || 'Trip Start Date'}
-                </Text>
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.tripStartDate}
+                    onChangeText={(v) => handleInputChange('tripStartDate', v)}
+                    placeholder="Trip Start Date (YYYY-MM-DD)"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowStartDatePicker(true)}
+                >
+                  <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                  <Text style={[styles.input, formData.tripStartDate ? styles.inputText : styles.placeholderText]}>
+                    {formData.tripStartDate || 'Trip Start Date'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Trip End Date */}
             <View style={styles.inputContainer}>
-              <TouchableOpacity 
-                style={styles.inputWrapper}
-                onPress={() => setShowEndDatePicker(true)}
-              >
-                <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
-                <Text style={[styles.input, formData.tripEndDate ? styles.inputText : styles.placeholderText]}>
-                  {formData.tripEndDate || 'Trip End Date'}
-                </Text>
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.tripEndDate}
+                    onChangeText={(v) => handleInputChange('tripEndDate', v)}
+                    placeholder="Trip End Date (YYYY-MM-DD)"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowEndDatePicker(true)}
+                >
+                  <Ionicons name="calendar" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                  <Text style={[styles.input, formData.tripEndDate ? styles.inputText : styles.placeholderText]}>
+                    {formData.tripEndDate || 'Trip End Date'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Register Button */}

@@ -27,9 +27,9 @@ const IdentityVerificationScreen: React.FC<Props> = ({ navigation }) => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const documentTypes = [
-    { id: 'passport', name: 'Passport', icon: 'passport' },
+    { id: 'passport', name: 'Passport', icon: 'document' },
     { id: 'drivers_license', name: 'Driver\'s License', icon: 'card' },
-    { id: 'national_id', name: 'National ID', icon: 'id-card' },
+    { id: 'national_id', name: 'National ID', icon: 'document-text' },
   ];
 
   const handleDocumentSelect = (documentId: string) => {
@@ -69,7 +69,7 @@ const IdentityVerificationScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -96,7 +96,7 @@ const IdentityVerificationScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,

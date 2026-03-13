@@ -77,7 +77,7 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
   const pulseScale = useRef(new Animated.Value(0)).current;
   const [showPulse, setShowPulse] = useState(false);
   const holdDurationMs = 1200;
-  let holdTimer: any = useRef(null).current;
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sample locations for demonstration with risk levels
   const sampleLocations = [
@@ -221,14 +221,14 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
-    holdTimer = setTimeout(() => {
+    holdTimer.current = setTimeout(() => {
       setIsHoldingPanic(false);
       handleEmergency();
     }, holdDurationMs);
   };
   const cancelHold = () => {
     if (!isHoldingPanic) return;
-    clearTimeout(holdTimer);
+    if (holdTimer.current) clearTimeout(holdTimer.current);
     Animated.timing(holdProgress, { toValue: 0, duration: 150, useNativeDriver: false }).start(() => {
       setIsHoldingPanic(false);
     });
@@ -465,48 +465,48 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
         >
           <Ionicons name="locate" size={22} color="#3498db" />
         </TouchableOpacity>
+
+        {/* Emergency Button: press-and-hold (inside mapContainer so absolute positioning works correctly) */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={[styles.emergencyButton, elderMode && { paddingVertical: 22 } ]}
+          onPressIn={beginHold}
+          onPressOut={cancelHold}
+        >
+          <Ionicons name="alert" size={24} color="#fff" />
+          <Text style={[styles.emergencyText, elderMode && { fontSize: 20 } ]}>{isHoldingPanic ? 'HOLD…' : 'EMERGENCY'}</Text>
+          <View style={styles.holdBarContainer}>
+            <Animated.View style={[styles.holdBarFill, { width: holdProgress.interpolate({ inputRange: [0,1], outputRange: ['0%', '100%'] }) }]} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Bottom Info Panel (inside mapContainer so absolute positioning works correctly) */}
+        {selectedLocation && (
+          <View style={[styles.infoPanel, elderMode && { padding: 24 } ]}>
+            <View style={styles.infoHeader}>
+              <Text style={[styles.infoTitle, elderMode && { fontSize: 20 } ]}>{selectedLocation.title}</Text>
+              <TouchableOpacity onPress={() => setSelectedLocation(null)}>
+                <Ionicons name="close" size={20} color="#7f8c8d" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.infoActions}>
+              <TouchableOpacity style={styles.infoButton}>
+                <Ionicons name="navigate" size={16} color="#3498db" />
+                <Text style={styles.infoButtonText}>Navigate</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.infoButton}>
+                <Ionicons name="information-circle" size={16} color="#3498db" />
+                <Text style={styles.infoButtonText}>Details</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.infoButton}>
+                <Ionicons name="share" size={16} color="#3498db" />
+                <Text style={styles.infoButtonText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ marginTop: 8, color: areaSafety === 'high' ? '#e74c3c' : areaSafety === 'medium' ? '#f39c12' : '#27ae60', fontWeight: '700' }}>Safety: {riskLabelMap[areaSafety]}</Text>
+          </View>
+        )}
       </View>
-
-      {/* Emergency Button: press-and-hold */}
-      <TouchableOpacity
-        activeOpacity={0.9}
-        style={[styles.emergencyButton, elderMode && { paddingVertical: 22 } ]}
-        onPressIn={beginHold}
-        onPressOut={cancelHold}
-      >
-        <Ionicons name="alert" size={24} color="#fff" />
-        <Text style={[styles.emergencyText, elderMode && { fontSize: 20 } ]}>{isHoldingPanic ? 'HOLD…' : 'EMERGENCY'}</Text>
-        <View style={styles.holdBarContainer}>
-          <Animated.View style={[styles.holdBarFill, { width: holdProgress.interpolate({ inputRange: [0,1], outputRange: ['0%', '100%'] }) }]} />
-        </View>
-      </TouchableOpacity>
-
-      {/* Bottom Info Panel */}
-      {selectedLocation && (
-        <View style={[styles.infoPanel, elderMode && { padding: 24 } ]}>
-          <View style={styles.infoHeader}>
-            <Text style={[styles.infoTitle, elderMode && { fontSize: 20 } ]}>{selectedLocation.title}</Text>
-            <TouchableOpacity onPress={() => setSelectedLocation(null)}>
-              <Ionicons name="close" size={20} color="#7f8c8d" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.infoActions}>
-            <TouchableOpacity style={styles.infoButton}>
-              <Ionicons name="navigate" size={16} color="#3498db" />
-              <Text style={styles.infoButtonText}>Navigate</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.infoButton}>
-              <Ionicons name="information-circle" size={16} color="#3498db" />
-              <Text style={styles.infoButtonText}>Details</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.infoButton}>
-              <Ionicons name="share" size={16} color="#3498db" />
-              <Text style={styles.infoButtonText}>Share</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={{ marginTop: 8, color: areaSafety === 'high' ? '#e74c3c' : areaSafety === 'medium' ? '#f39c12' : '#27ae60', fontWeight: '700' }}>Safety: {riskLabelMap[areaSafety]}</Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 };

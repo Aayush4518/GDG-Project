@@ -40,7 +40,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   }, [navigation, touristId]);
 
   // Skeleton components
-  const SkeletonLine = ({ width = '100%', height = 14 }: { width?: number | string; height?: number }) => (
+  const SkeletonLine = ({ width = '100%' as const, height = 14 }: { width?: number | `${number}%`; height?: number }) => (
     <View style={{ width, height, backgroundColor: '#eceff1', borderRadius: 6, marginVertical: 6 }} />
   );
   const CardSkeleton = () => (

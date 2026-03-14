@@ -20,8 +20,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from haversine import haversine, Unit
 
-from app.db import models
-from app.crud import crud_tourist
+from ..db import models
+from ..crud import crud_tourist
 
 
 # Configuration constants for ML anomaly detection
@@ -29,6 +29,23 @@ MIN_DATA_POINTS_FOR_ML = 20  # Minimum location logs needed to build a model
 LOCATION_HISTORY_LIMIT = 100  # Number of recent location logs to analyze
 ML_CONTAMINATION_RATE = 'auto'  # IsolationForest contamination parameter
 ML_RANDOM_STATE = 42  # For reproducible results
+
+# --------------------------------------------------------------------------- #
+# Per-tourist model cache                                                       #
+# Stores (trained_model, data_hash) so we only retrain when new data arrives.  #
+# --------------------------------------------------------------------------- #
+from typing import Tuple
+import hashlib as _hashlib
+
+_model_cache: dict = {}  # tourist_id -> (IsolationForest, str data_fingerprint)
+
+
+def _data_fingerprint(location_logs) -> str:
+    """Cheap fingerprint of location history — uses the last-log timestamp."""
+    if not location_logs:
+        return ""
+    last = location_logs[0]  # newest first
+    return str(last.id) + str(len(location_logs))
 
 
 def _calculate_features(location_logs: List[models.LocationLog]) -> pd.DataFrame:
@@ -188,15 +205,20 @@ def detect_behavioral_anomalies(db: Session, tourist_id: str, latest_location: m
             print(f"🤖 ML Anomaly: No valid features for tourist {tourist_id}")
             return None
         
-        # Step 4: Initialize and train IsolationForest model
-        isolation_forest = IsolationForest(
-            contamination=ML_CONTAMINATION_RATE,
-            random_state=ML_RANDOM_STATE,
-            n_estimators=100
-        )
-        
-        # Fit the model on historical behavior patterns
-        isolation_forest.fit(X_historical)
+        # Step 4: Train IsolationForest — use cached model if data hasn't changed
+        fingerprint = _data_fingerprint(location_history)
+        cached = _model_cache.get(tourist_id)
+
+        if cached is not None and cached[1] == fingerprint:
+            isolation_forest = cached[0]
+        else:
+            isolation_forest = IsolationForest(
+                contamination=ML_CONTAMINATION_RATE,
+                random_state=ML_RANDOM_STATE,
+                n_estimators=100,
+            )
+            isolation_forest.fit(X_historical)
+            _model_cache[tourist_id] = (isolation_forest, fingerprint)
         
         # Step 5: Create feature vector for the latest location
         # We need to compare with the most recent historical point to calculate movement features

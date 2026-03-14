@@ -13,7 +13,7 @@ from ...schemas.risk import HeatmapPoint, HeatmapRequest, RiskPredictRequest, Ri
 router = APIRouter(prefix="/risk", tags=["Risk Prediction"])
 
 
-@router.get("/predict", response_model=RiskPredictResponse)
+@router.post("/predict", response_model=RiskPredictResponse)
 async def get_risk_prediction(
     latitude: float | None = Query(None, description="Latitude"),
     longitude: float | None = Query(None, description="Longitude"),
@@ -58,7 +58,7 @@ async def get_risk_heatmap(
     try:
         if payload is not None:
             bounds = payload.bbox
-            ts = payload.timestamp or datetime.utcnow()
+            ts = payload.timestamp or datetime.now(timezone.utc)
         else:
             if not bbox:
                 raise HTTPException(
@@ -66,7 +66,7 @@ async def get_risk_heatmap(
                     detail="Provide either request body or query parameter: bbox",
                 )
             bounds = [float(value.strip()) for value in bbox.split(",")]
-            ts = timestamp or datetime.utcnow()
+            ts = timestamp or datetime.now(timezone.utc)
 
         points = predict_heatmap(
             bbox=bounds,

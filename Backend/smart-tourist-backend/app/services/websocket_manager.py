@@ -84,3 +84,9 @@ class ConnectionManager:
                 await connection.send_json(data)
             except Exception:
                 self.disconnect(connection)
+
+
+# Shared singleton — import this everywhere instead of creating a new instance.
+# dashboard_router uses it as the WebSocket endpoint hub.
+# alert_service uses it to broadcast alerts.
+manager = ConnectionManager()

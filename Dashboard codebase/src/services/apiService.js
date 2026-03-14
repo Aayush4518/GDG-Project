@@ -3,6 +3,24 @@ import axios from 'axios';
 // Base URL for the backend API
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
+// In-memory token store (cleared on page reload — use sessionStorage for persistence)
+let _authToken = null;
+
+export function setAuthToken(token) {
+  _authToken = token;
+  if (token) {
+    sessionStorage.setItem('auth_token', token);
+  } else {
+    sessionStorage.removeItem('auth_token');
+  }
+}
+
+export function loadStoredToken() {
+  const stored = sessionStorage.getItem('auth_token');
+  if (stored) _authToken = stored;
+  return stored;
+}
+
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -12,9 +30,12 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor for logging
+// Request interceptor — attach JWT if available
 apiClient.interceptors.request.use(
   (config) => {
+    if (_authToken) {
+      config.headers['Authorization'] = `Bearer ${_authToken}`;
+    }
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -31,6 +52,10 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    if (error.response?.status === 401) {
+      console.warn('Session expired or unauthorized. Clearing auth state.');
+      setAuthToken(null);
+    }
     console.error('API Response Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
@@ -41,6 +66,27 @@ apiClient.interceptors.response.use(
  * Handles all backend communication for the authorities' web dashboard
  */
 export const apiService = {
+  /**
+   * Authenticate a dashboard authority user (Police / Tourism officer).
+   * On success, stores the JWT token for subsequent requests.
+   * @param {string} username
+   * @param {string} password
+   * @returns {Promise<{role: string, username: string}>}
+   */
+  async loginAuthority(username, password) {
+    const response = await apiClient.post('/auth/authority/login', { username, password });
+    const { access_token, role, username: resolvedUsername } = response.data;
+    setAuthToken(access_token);
+    return { role, username: resolvedUsername };
+  },
+
+  /**
+   * Clear the stored auth token (logout).
+   */
+  logout() {
+    setAuthToken(null);
+  },
+
   /**
    * Get all active tourists with their current locations
    * @returns {Promise<Array>} Array of tourist objects with location data

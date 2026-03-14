@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.db import models
+from ..db import models
 
 FEATURE_COLUMNS: List[str] = [
     "latitude",
@@ -23,7 +23,7 @@ FEATURE_COLUMNS: List[str] = [
 def parse_timestamp(timestamp: Optional[str | datetime] = None) -> datetime:
     """Normalize incoming timestamp into datetime."""
     if timestamp is None:
-        return datetime.utcnow()
+        return datetime.now(timezone.utc)
     if isinstance(timestamp, datetime):
         return timestamp
 

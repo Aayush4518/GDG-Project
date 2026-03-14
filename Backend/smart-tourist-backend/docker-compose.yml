@@ -11,6 +11,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d smarttourist"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   backend:
     build: .
@@ -18,11 +24,14 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/smarttourist
+      SECRET_KEY: ${SECRET_KEY:-change-me-generate-a-strong-secret-key-before-running}
+      POLICE_USERNAME: ${POLICE_USERNAME:-police@travelguardian.gov}
+      POLICE_PASSWORD: ${POLICE_PASSWORD:-police123}
+      TOURISM_USERNAME: ${TOURISM_USERNAME:-tourism@travelguardian.gov}
+      TOURISM_PASSWORD: ${TOURISM_PASSWORD:-tourism123}
     depends_on:
-      - db
-    volumes:
-      - .:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:

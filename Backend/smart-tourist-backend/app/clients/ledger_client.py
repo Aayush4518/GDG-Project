@@ -157,7 +157,7 @@ class LedgerClient:
             event_data={
                 "location": location_data,
                 "event_source": "panic_button",
-                "logged_at": datetime.utcnow().isoformat()
+                "logged_at": datetime.now(timezone.utc).isoformat()
             }
         )
     

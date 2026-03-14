@@ -1,19 +1,16 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Response
-from typing import List
+from typing import Any, Dict, List
 from sqlalchemy.orm import Session
+from ...core.security import require_authority
 from ...db.session import get_db
 from ...db import models
-from ...services import ledger_service
 from ...services import efir_service
-from ...services.websocket_manager import ConnectionManager
+from ...services.websocket_manager import manager
 from ...crud import crud_dashboard
 from ...schemas import tourist as schemas
 
 # Create router instance
 router = APIRouter()
-
-# Create a single, shared instance of the connection manager
-manager = ConnectionManager()
 
 
 @router.websocket("/ws/dashboard")
@@ -46,68 +43,12 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-@router.websocket("/ws/user/{user_id}")
-async def user_websocket_endpoint(websocket: WebSocket, user_id: str):
-    """
-    WebSocket endpoint for user-specific real-time alerts.
-
-    Args:
-        websocket: The WebSocket connection from user client
-        user_id: Tourist/user UUID for scoped notifications
-    """
-    await manager.connect_user(user_id, websocket)
-
-    try:
-        while True:
-            await websocket.receive_text()
-
-    except WebSocketDisconnect:
-        pass
-    except Exception:
-        pass
-    finally:
-        manager.disconnect(websocket)
-
-
-@router.get("/ledger/verify", status_code=200)
-def verify_ledger_integrity(db: Session = Depends(get_db)):
-    """
-    Endpoint to verify the integrity of the tamper-evident ledger chain
-    
-    This endpoint runs the chain verification logic and returns a clear
-    success or failure status for demonstration purposes.
-    
-    Args:
-        db: Database session dependency
-        
-    Returns:
-        JSON response indicating whether the ledger chain is valid or tampered
-    """
-    try:
-        # Call the ledger service to verify chain integrity
-        is_valid = ledger_service.verify_chain(db)
-        
-        if is_valid:
-            return {
-                "status": "success",
-                "message": "Ledger integrity verified. No tampering detected."
-            }
-        else:
-            return {
-                "status": "error", 
-                "message": "CRITICAL: Ledger tampering detected! Chain is invalid."
-            }
-            
-    except Exception as e:
-        # Handle any unexpected errors during verification
-        return {
-            "status": "error",
-            "message": f"Error during ledger verification: {str(e)}"
-        }
-
 
 @router.get("/active-tourists", response_model=List[schemas.TouristStatus])
-def get_active_tourists(db: Session = Depends(get_db)):
+def get_active_tourists(
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get all active tourists with their last known location for dashboard initialization
     
@@ -146,7 +87,11 @@ def get_active_tourists(db: Session = Depends(get_db)):
 
 
 @router.get("/tourists/{tourist_id}/details", response_model=schemas.TouristDetails)
-def get_tourist_details(tourist_id: str, db: Session = Depends(get_db)):
+def get_tourist_details(
+    tourist_id: str,
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get detailed information for a specific tourist including location history
     
@@ -210,7 +155,10 @@ def get_tourist_details(tourist_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/analytics", response_model=schemas.DashboardAnalytics)
-def get_dashboard_analytics(db: Session = Depends(get_db)):
+def get_dashboard_analytics(
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get dashboard analytics and summary statistics
     
@@ -246,140 +194,11 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
         )
 
 
-@router.post("/test-alert")
-async def test_alert_broadcast():
-    """
-    **TEMPORARY TEST ENDPOINT** - Used to verify alert broadcasting functionality
-    
-    This endpoint demonstrates how the centralized alert service works by
-    triggering a sample alert that gets broadcast to all connected WebSocket clients.
-    
-    To test:
-    1. Connect to WebSocket endpoint: ws://localhost:8000/api/v1/dashboard/ws/dashboard
-    2. Make POST request to: http://localhost:8000/api/v1/dashboard/test-alert
-    3. WebSocket client should receive the formatted alert payload
-    
-    Returns:
-        JSON confirmation that the alert was triggered
-    """
-    try:
-        # Import alert_service locally to avoid circular import
-        from ...services import alert_service
-        
-        # Trigger a sample panic alert using the centralized alert service
-        await alert_service.trigger_panic_alert(
-            tourist_id="123e4567-e89b-12d3-a456-426614174000",
-            name="Test Tourist Alice",
-            location={"latitude": 12.9716, "longitude": 77.5946},
-            timestamp="2025-09-15T14:30:00Z"
-        )
-        
-        return {
-            "status": "success",
-            "message": "Test alert broadcast successfully sent to all connected clients",
-            "alert_type": "PANIC_ALERT",
-            "test_data": {
-                "tourist_id": "123e4567-e89b-12d3-a456-426614174000",
-                "name": "Test Tourist Alice"
-            }
-        }
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Failed to broadcast test alert: {str(e)}"
-        }
-
-
-@router.post("/test-inactivity-alert")
-async def test_inactivity_alert_broadcast():
-    """
-    **TEMPORARY TEST ENDPOINT** - Test inactivity alert broadcasting
-    
-    This endpoint demonstrates how Developer 3 (AI monitoring) would trigger
-    inactivity alerts using the centralized alert service.
-    
-    Returns:
-        JSON confirmation that the inactivity alert was triggered
-    """
-    try:
-        # Import alert_service locally to avoid circular import
-        from ...services import alert_service
-        
-        # Trigger a sample inactivity alert
-        await alert_service.trigger_inactivity_alert(
-            tourist_id="987fcdeb-51d4-43e8-9f12-345678901234",
-            name="Test Tourist Bob",
-            last_location={"latitude": 12.9700, "longitude": 77.5900},
-            last_seen="2025-09-15T10:00:00Z",
-            inactivity_duration="4 hours"
-        )
-        
-        return {
-            "status": "success",
-            "message": "Test inactivity alert broadcast successfully",
-            "alert_type": "INACTIVITY_ALERT",
-            "test_data": {
-                "tourist_id": "987fcdeb-51d4-43e8-9f12-345678901234",
-                "name": "Test Tourist Bob",
-                "inactivity_duration": "4 hours"
-            }
-        }
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Failed to broadcast inactivity alert: {str(e)}"
-        }
-
-
-@router.post("/test-alert-resolved")
-async def test_alert_resolved_broadcast():
-    """
-    **TEMPORARY TEST ENDPOINT** - Test alert resolution broadcasting
-    
-    This endpoint demonstrates how authorities/dispatchers would broadcast
-    alert resolution notifications when an incident is resolved.
-    This completes the incident lifecycle for Prompt 8.
-    
-    Returns:
-        JSON confirmation that the alert resolution notification was triggered
-    """
-    try:
-        # Import alert_service locally to avoid circular import
-        from ...services import alert_service
-        
-        # Trigger a sample alert resolution notification
-        await alert_service.trigger_alert_resolved(
-            tourist_id="123e4567-e89b-12d3-a456-426614174000",
-            name="Test Tourist Alice",
-            resolved_by="Dispatcher Sharma",
-            resolution_notes="Contacted tourist via backup phone. Confirmed safe. Was in area with poor signal coverage during hiking activity."
-        )
-        
-        return {
-            "status": "success",
-            "message": "Test alert resolution broadcast successfully",
-            "alert_type": "ALERT_RESOLVED",
-            "test_data": {
-                "tourist_id": "123e4567-e89b-12d3-a456-426614174000",
-                "name": "Test Tourist Alice",
-                "resolved_by": "Dispatcher Sharma",
-                "incident_closed": True
-            }
-        }
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Failed to broadcast alert resolution: {str(e)}"
-        }
-
-
 @router.post("/tourists/{tourist_id}/generate-efir")
 async def generate_efir_for_tourist(
     tourist_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
 ) -> Response:
     """
     Generate an automated E-FIR (Electronic First Information Report) PDF for a missing tourist
@@ -445,7 +264,10 @@ async def generate_efir_for_tourist(
 
 # Risk Zones Endpoint
 @router.get("/risk-zones")
-def get_risk_zones(db: Session = Depends(get_db)):
+def get_risk_zones(
+    db: Session = Depends(get_db),
+    _user: Dict[str, Any] = Depends(require_authority),
+):
     """
     Get risk zones for map display with coordinates and risk levels
     
@@ -459,45 +281,32 @@ def get_risk_zones(db: Session = Depends(get_db)):
         List of risk zone objects with coordinates and risk levels
     """
     try:
-        # Query risk zones from database
         risk_zones = db.query(models.HighRiskZone).all()
-        
-        # Convert to response format - simplified for demonstration
+
         result = []
         for zone in risk_zones:
-            # For now, return sample risk zones since we don't have actual data
-            # In production, you'd extract coordinates from zone.geometry
-            pass
-        
-        # Return sample risk zones for testing
-        return [
-            {
-                "id": "zone_1",
-                "coordinates": [
-                    {"latitude": 25.5941, "longitude": 85.1376},
-                    {"latitude": 25.5941, "longitude": 85.1476},
-                    {"latitude": 25.6041, "longitude": 85.1476},
-                    {"latitude": 25.6041, "longitude": 85.1376}
-                ],
-                "level": "high"
-            },
-            {
-                "id": "zone_2", 
-                "coordinates": [
-                    {"latitude": 26.1445, "longitude": 91.7362},
-                    {"latitude": 26.1445, "longitude": 91.7462},
-                    {"latitude": 26.1545, "longitude": 91.7462},
-                    {"latitude": 26.1545, "longitude": 91.7362}
-                ],
-                "level": "medium"
-            }
-        ]
-        
+            # geometry is a WKBElement from GeoAlchemy2; convert to GeoJSON-like dict
+            try:
+                from geoalchemy2.shape import to_shape
+                shape = to_shape(zone.geometry)
+                coords = [
+                    {"latitude": lat, "longitude": lon}
+                    for lon, lat in shape.exterior.coords
+                ]
+            except Exception:
+                coords = []
+
+            result.append({
+                "id": zone.id,
+                "name": zone.name,
+                "coordinates": coords,
+                "level": "high",
+            })
+
+        return result
+
     except Exception as e:
-        # Return empty array on error - risk zones are optional
         print(f"Error fetching risk zones: {str(e)}")
         return []
 
 
-# The manager instance is exported at module level for use by alert_service
-# This allows the centralized alert service to import and use the manager directly

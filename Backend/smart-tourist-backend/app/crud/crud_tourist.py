@@ -175,7 +175,7 @@ def create_location_log(db: Session, tourist_id: str, location: schemas.Location
         tourist_id=tourist_id,
         latitude=location.latitude,
         longitude=location.longitude,
-        timestamp=datetime.utcnow()  # Set current UTC timestamp
+        timestamp=datetime.now(timezone.utc)  # Set current UTC timestamp
     )
     
     # Step 2: Add the new object to the database session

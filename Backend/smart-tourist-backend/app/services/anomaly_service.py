@@ -1,17 +1,17 @@
 """Async anomaly detection engine for periodic backend monitoring."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from sqlalchemy.orm import Session
 
-from app.crud import crud_tourist
-from app.db import models
-from app.db.session import get_db
-from app.ml.risk_model import predict_risk
-from app.services import alert_service, ml_anomaly_service
-from app.services.route_monitor_service import route_monitor_service
+from ..crud import crud_tourist
+from ..db import models
+from ..db.session import get_db
+from ..ml.risk_model import predict_risk
+from ..services import alert_service, ml_anomaly_service
+from ..services.route_monitor_service import route_monitor_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ BACKGROUND_TASK_INTERVAL_SECONDS = 60
 
 async def check_inactivity(db: Session, tourist: models.Tourist, latest_location: models.LocationLog) -> None:
     """Check inactivity threshold and trigger alert if exceeded."""
-    inactivity_delta = datetime.utcnow() - latest_location.timestamp
+    inactivity_delta = datetime.now(timezone.utc) - latest_location.timestamp
     if inactivity_delta <= timedelta(minutes=INACTIVITY_THRESHOLD_MINUTES):
         return
 
@@ -153,7 +153,7 @@ async def run_anomaly_checks_periodically() -> None:
         try:
             active_tourists = (
                 db.query(models.Tourist)
-                .filter(models.Tourist.trip_end_date > datetime.utcnow())
+                .filter(models.Tourist.trip_end_date > datetime.now(timezone.utc))
                 .all()
             )
             for tourist in active_tourists:

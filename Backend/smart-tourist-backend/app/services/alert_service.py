@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 import uuid
 import logging
 
-from ..api.v1.dashboard_router import manager
+from .websocket_manager import manager
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,11 @@ async def trigger_alert(
         try:
             parsed_ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         except ValueError:
-            parsed_ts = datetime.utcnow()
+            parsed_ts = datetime.now(timezone.utc)
     elif isinstance(timestamp, datetime):
         parsed_ts = timestamp
     else:
-        parsed_ts = datetime.utcnow()
+        parsed_ts = datetime.now(timezone.utc)
 
     alert = await create_and_broadcast_alert(
         user_id=tourist_id,
@@ -69,7 +69,7 @@ async def create_and_broadcast_alert(
 
     Returns the created alert payload.
     """
-    ts = timestamp or datetime.utcnow()
+    ts = timestamp or datetime.now(timezone.utc)
 
     alert_obj = {
         "id": str(uuid.uuid4()),
@@ -96,21 +96,13 @@ async def create_and_broadcast_alert(
     if extra_payload:
         event_payload["details"] = extra_payload
 
-    # Backward-compatible envelope for existing consumers.
-    legacy_payload = {
-        "event_type": alert_type,
-        "payload": {
-            "tourist_id": str(user_id),
-            **(extra_payload or {}),
-            "alert": alert_obj,
-        },
-    }
+    # Single unified payload — includes both new-format and legacy fields so all
+    # dashboard consumers receive everything they need in one message.
+    event_payload["event_type"] = alert_type
+    event_payload["tourist_id"] = str(user_id)
 
     try:
         await manager.broadcast(event_payload)
-        await manager.broadcast_user(str(user_id), event_payload)
-        await manager.broadcast(legacy_payload)
-        await manager.broadcast_user(str(user_id), legacy_payload)
         logger.info("Alert broadcasted: %s for user %s", alert_type, user_id)
     except Exception as exc:
         logger.exception("Alert broadcast failed for user %s: %s", user_id, exc)
@@ -125,12 +117,12 @@ async def trigger_panic_alert(
     timestamp: Any,
 ) -> Dict[str, Any]:
     """Trigger panic alert."""
-    ts = timestamp if isinstance(timestamp, datetime) else datetime.utcnow()
+    ts = timestamp if isinstance(timestamp, datetime) else datetime.now(timezone.utc)
     if isinstance(timestamp, str):
         try:
             ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         except ValueError:
-            ts = datetime.utcnow()
+            ts = datetime.now(timezone.utc)
 
     return await trigger_alert(
         alert_type="PANIC_ALERT",
@@ -205,7 +197,7 @@ async def trigger_alert_resolved(
             "name": name,
             "resolved_by": resolved_by,
             "resolution_notes": resolution_notes,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "priority": "INFO",
             "incident_closed": True,
             "status": "RESOLVED",

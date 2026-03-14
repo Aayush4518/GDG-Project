@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polygon, useMap } from 'react-l
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './App.css'
-import apiService from './services/apiService'
+import apiService, { loadStoredToken } from './services/apiService'
 import websocketService from './services/websocketService'
 import LiveActivityFeed from './components/LiveActivityFeed'
 import Advanced3DMap from './components/Advanced3DMap'
@@ -273,33 +273,40 @@ function Footer() {
 function Login({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('Police')
-  const submit = (e) => {
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const submit = async (e) => {
     e.preventDefault()
-    onLogin({ email, role })
-    window.location.hash = '#dashboard'
+    setError('')
+    setLoading(true)
+    try {
+      const { role, username } = await apiService.loginAuthority(email, password)
+      onLogin({ email: username, role })
+      window.location.hash = '#dashboard'
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Invalid username or password. Please try again.'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
+
   return (
     <section id="login" className="login">
       <div className="container">
         <h2>Authority Login</h2>
         <form className="login-form" onSubmit={submit}>
           <label>
-            <span>Email</span>
+            <span>Email / Username</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
           <label>
             <span>Password</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </label>
-          <label>
-            <span>Role</span>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option>Police</option>
-              <option>Tourism</option>
-            </select>
-          </label>
-          <button className="btn primary" type="submit">Sign in</button>
+          {error && <p style={{ color: 'var(--danger, #ef4444)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>{error}</p>}
+          <button className="btn primary" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
         </form>
       </div>
     </section>
@@ -459,41 +466,51 @@ function Dashboard({ user }) {
   const [isLoading, setIsLoading] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
 
-  // Load initial data from backend first, fallback to dummy data.
+  // Load initial data — backend first, fallback to demo data if backend is unavailable
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setIsLoading(true);
-        const touristsData = await apiService.getActiveTourists();
-        const analyticsData = await apiService.getAnalytics();
+
+        // PRIMARY: Try live backend
+        console.log('Connecting to backend...');
+        const [touristsData, analyticsData, riskZonesData] = await Promise.all([
+          apiService.getActiveTourists(),
+          apiService.getAnalytics(),
+          apiService.getRiskZones(),
+        ]);
+
         setTourists(touristsData);
         setAnalytics(analyticsData);
+        setRiskZones(riskZonesData);
+        console.log(`Loaded ${touristsData.length} tourists from live backend`);
+        setToast('Connected to live backend — data is real-time');
+      } catch (backendError) {
+        console.warn('Backend unavailable, loading demo data as fallback:', backendError.message);
 
+        // FALLBACK: Load demo/dummy data when backend is unreachable
         try {
-          const riskZonesData = await apiService.getRiskZones();
-          setRiskZones(riskZonesData);
-        } catch (_error) {
-          setRiskZones([]);
-        }
-        setToast('Connected to live backend data.');
-      } catch (error) {
-        console.error('Failed to load backend data:', error);
-        // Fallback to dummy data when backend is unavailable.
-        try {
-          const touristsResponse = await fetch('/massive_tourists.json');
-          const touristsData = await touristsResponse.json();
-          const alertsResponse = await fetch('/massive_alerts.json');
-          const alertsData = await alertsResponse.json();
-          const analyticsResponse = await fetch('/analytics.json');
-          const analyticsData = await analyticsResponse.json();
+          const [touristsRes, alertsRes, analyticsRes] = await Promise.all([
+            fetch('/massive_tourists.json'),
+            fetch('/massive_alerts.json'),
+            fetch('/analytics.json'),
+          ]);
+
+          const [touristsData, alertsData, analyticsData] = await Promise.all([
+            touristsRes.json(),
+            alertsRes.json(),
+            analyticsRes.json(),
+          ]);
 
           setTourists(touristsData);
           setAlerts(alertsData);
           setAnalytics(analyticsData);
-          setToast('Loaded dummy data fallback.');
+          setRiskZones([]);
+          console.warn(`Demo mode: loaded ${touristsData.length} dummy tourists (backend offline)`);
+          setToast('Backend offline — showing demo data. Start the backend to use live data.');
         } catch (fallbackError) {
-          console.error('Both backend and dummy data failed:', fallbackError);
-          setToast('Failed to load any data. Please refresh the page.');
+          console.error('Both backend and demo data failed:', fallbackError);
+          setToast('Failed to load any data. Please start the backend and refresh.');
         }
       } finally {
         setIsLoading(false);
@@ -507,48 +524,33 @@ function Dashboard({ user }) {
   useEffect(() => {
     const handleWebSocketMessage = (data) => {
       console.log('WebSocket message received:', data);
-
-      // Supports:
-      // 1) New payload: { event, alert_type, location, risk_score, alert }
-      // 2) Legacy payload: { event_type, payload: { tourist_id, ... } }
-      const payload = data?.payload || data?.alert || {};
-      const eventType = data?.alert_type || data?.event_type;
-      const touristId = payload?.user_id || payload?.tourist_id || data?.tourist_id || data?.user_id;
-      const latitude = data?.location?.lat ?? payload?.latitude ?? payload?.location?.latitude ?? data?.latitude;
-      const longitude = data?.location?.lon ?? payload?.longitude ?? payload?.location?.longitude ?? data?.longitude;
-      const riskScore = data?.risk_score ?? payload?.risk_score;
-      const severity = riskScore >= 0.75 ? 'Critical' : riskScore >= 0.4 ? 'High' : 'Medium';
-
-      switch (eventType) {
+      
+      switch (data.event_type) {
         case 'PANIC_ALERT':
         case 'INACTIVITY_ALERT':
         case 'UNUSUAL_BEHAVIOR_ALERT':
-        case 'ROUTE_DEVIATION':
-        case 'HIGH_RISK_AREA':
-        case 'ANOMALY_DETECTION':
-        case 'LOCATION_ALERT':
           // Update active alerts
           setActiveAlerts(prev => ({
             ...prev,
-            [touristId]: true
+            [data.tourist_id]: true
           }));
           
           // Add to alerts list
           setAlerts(prev => [{
             id: `ALR-${Date.now()}`,
-            type: eventType.replaceAll('_', ' '),
-            severity,
-            location: latitude && longitude ? `${Number(latitude).toFixed(4)}, ${Number(longitude).toFixed(4)}` : 'Unknown',
-            district: payload?.district || 'Unknown',
+            type: data.event_type.replace('_', ' '),
+            severity: data.severity || 'High',
+            location: `${data.latitude?.toFixed(4)}, ${data.longitude?.toFixed(4)}`,
+            district: data.district || 'Unknown',
             timeMinutesAgo: 0,
-            touristId: touristId || 'unknown'
+            touristId: data.tourist_id
           }, ...prev]);
           
           // Update tourist location if provided
-          if (latitude && longitude && touristId) {
+          if (data.latitude && data.longitude) {
             setTourists(prev => prev.map(tourist => 
-              String(tourist.tourist_id) === String(touristId)
-                ? { ...tourist, last_known_location: { latitude: Number(latitude), longitude: Number(longitude) } }
+              tourist.tourist_id === data.tourist_id 
+                ? { ...tourist, last_known_location: { latitude: data.latitude, longitude: data.longitude } }
                 : tourist
             ));
           }
@@ -558,23 +560,21 @@ function Dashboard({ user }) {
           // Remove from active alerts
           setActiveAlerts(prev => ({
             ...prev,
-            [touristId]: false
+            [data.tourist_id]: false
           }));
           break;
           
         case 'LOCATION_UPDATE':
           // Update tourist location
-          if (latitude && longitude && touristId) {
-            setTourists(prev => prev.map(tourist => 
-              String(tourist.tourist_id) === String(touristId)
-                ? { ...tourist, last_known_location: { latitude: Number(latitude), longitude: Number(longitude) } }
-                : tourist
-            ));
-          }
+          setTourists(prev => prev.map(tourist => 
+            tourist.tourist_id === data.tourist_id 
+              ? { ...tourist, last_known_location: { latitude: data.latitude, longitude: data.longitude } }
+              : tourist
+          ));
           break;
           
         default:
-          console.log('Unknown event type:', eventType);
+          console.log('Unknown event type:', data.event_type);
       }
     };
 
@@ -1299,7 +1299,10 @@ function FeaturesModal({ onClose }) {
 function App() {
   const [route, setRoute] = useState(window.location.hash || '#home')
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('auth_user') || 'null') } catch { return null }
+    try {
+      loadStoredToken()
+      return JSON.parse(sessionStorage.getItem('auth_user') || 'null')
+    } catch { return null }
   })
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [contactModalOpen, setContactModalOpen] = useState(false)
@@ -1313,8 +1316,13 @@ function App() {
   }, [])
 
   const isAuthed = !!user
-  const login = (u) => { setUser(u); localStorage.setItem('auth_user', JSON.stringify(u)) }
-  const logout = () => { setUser(null); localStorage.removeItem('auth_user'); if (route === '#dashboard') window.location.hash = '#login' }
+  const login = (u) => { setUser(u); sessionStorage.setItem('auth_user', JSON.stringify(u)) }
+  const logout = () => {
+    apiService.logout()
+    setUser(null)
+    sessionStorage.removeItem('auth_user')
+    if (route === '#dashboard') window.location.hash = '#login'
+  }
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)

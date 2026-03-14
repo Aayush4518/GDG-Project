@@ -158,14 +158,13 @@ def generate_efir_pdf(db: Session, tourist_id: str) -> bytes:
             
             pdf.set_font('Arial', '', 9)
             for location in location_history:
-                # Format timestamp
-                timestamp_str = location.timestamp.strftime("%m/%d %H:%M")
-                
-                # Format coordinates
-                lat_str = f"{location.latitude:.6f}"
-                lng_str = f"{location.longitude:.6f}"
-                
-                # Basic location description (in production, could reverse geocode)
+                # location_history is a list of dicts from crud_dashboard
+                ts = location['timestamp']
+                timestamp_str = ts.strftime("%m/%d %H:%M") if hasattr(ts, 'strftime') else str(ts)
+
+                lat_str = f"{location['latitude']:.6f}"
+                lng_str = f"{location['longitude']:.6f}"
+
                 location_desc = f"GPS: {lat_str}, {lng_str}"
                 
                 pdf.cell(40, 6, timestamp_str, 1, 0, 'C')

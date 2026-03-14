@@ -112,7 +112,7 @@ async def log_event_to_ledger(
         standardized_event_data = {
             "event": request.event_type,
             "details": request.event_data,
-            "logged_at": datetime.utcnow().isoformat()
+            "logged_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Log the event to the tamper-evident ledger
@@ -233,7 +233,7 @@ async def verify_ledger_integrity(
             "success": True,
             "chain_valid": is_valid,
             "message": "Ledger integrity verified" if is_valid else "CRITICAL: Ledger tampering detected",
-            "verified_at": datetime.utcnow().isoformat()
+            "verified_at": datetime.now(timezone.utc).isoformat()
         }
         
     except HTTPException:

@@ -21,7 +21,7 @@ class IDLedger(Base):
     __tablename__ = "id_ledger"
     
     id = Column(Integer, primary_key=True, index=True)
-    tourist_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tourist_id = Column(UUID(as_uuid=True), ForeignKey("tourists.id", ondelete="CASCADE"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), nullable=False)
     data = Column(JSON, nullable=False)
     previous_hash = Column(String(64), nullable=False)
@@ -32,7 +32,7 @@ class LocationLog(Base):
     __tablename__ = "location_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    tourist_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tourist_id = Column(UUID(as_uuid=True), ForeignKey("tourists.id", ondelete="CASCADE"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), nullable=False)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
@@ -47,11 +47,14 @@ class HighRiskZone(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class TouristItinerary(Base):
-    __tablename__ = "tourist_itineraries"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    tourist_id = Column(UUID(as_uuid=True), ForeignKey("tourists.id"), nullable=False, index=True)
-    sequence_order = Column(Integer, nullable=False)
-    location = Column(Geometry('POINT'), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+# NOTE: TouristItinerary is reserved for a future planned-route persistence feature.
+# In-memory route storage is currently handled by route_monitor_service.py.
+# Uncomment and run Alembic migration when implementing DB-backed route storage.
+#
+# class TouristItinerary(Base):
+#     __tablename__ = "tourist_itineraries"
+#     id = Column(Integer, primary_key=True, index=True)
+#     tourist_id = Column(UUID(as_uuid=True), ForeignKey("tourists.id"), nullable=False, index=True)
+#     sequence_order = Column(Integer, nullable=False)
+#     location = Column(Geometry('POINT'), nullable=False)
+#     created_at = Column(DateTime(timezone=True), server_default=func.now())

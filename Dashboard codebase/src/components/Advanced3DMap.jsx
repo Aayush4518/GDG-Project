@@ -325,7 +325,8 @@ const FullscreenMapModal = ({
           zoom={8}
           style={{ height: '100%', width: '100%' }}
           className="fullscreen-live-map"
-          zoomControl={true}
+          zoomControl={false}
+          attributionControl={false}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -498,6 +499,7 @@ const Advanced3DMap = ({
         style={{ height: '100%', width: '100%' }}
         className="live-map"
         zoomControl={false} // We'll use custom controls
+        attributionControl={false}
       >
         <TileLayer
           url={tileLayer.url}

@@ -84,8 +84,8 @@
 /* Presence Indicator */
 .presence-indicator {
   position: fixed;
-  top: 80px;
-  left: 20px;
+  top: calc(var(--navbar-height) + var(--floating-gap));
+  left: var(--floating-gap);
   pointer-events: auto;
   z-index: 1002;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -406,7 +406,7 @@
 /* Activity Pulse */
 .activity-pulse {
   position: fixed;
-  top: 100px;
+  top: calc(var(--navbar-height) + 40px);
   left: 40px;
   pointer-events: none;
   z-index: 1001;
@@ -440,7 +440,7 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .presence-indicator {
-    top: 70px;
+    top: calc(var(--navbar-height) + 0.75rem);
     left: 10px;
     right: 10px;
   }

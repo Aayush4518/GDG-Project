@@ -1,8 +1,8 @@
 /* Live Activity Feed Styles */
 .live-activity-feed {
   position: fixed;
-  top: 80px;
-  right: 20px;
+  top: calc(var(--navbar-height) + var(--floating-gap));
+  right: var(--floating-gap);
   width: 380px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
@@ -20,7 +20,7 @@
 
 .live-activity-feed.expanded {
   height: 500px;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - var(--navbar-height) - 3rem);
 }
 
 /* Feed Header */
@@ -392,11 +392,11 @@
     right: 10px;
     left: 10px;
     width: auto;
-    top: 70px;
+    top: calc(var(--navbar-height) + 0.75rem);
   }
   
   .live-activity-feed.expanded {
-    height: 400px;
+    height: min(400px, calc(100vh - var(--navbar-height) - 6rem));
   }
   
   .feed-stats {

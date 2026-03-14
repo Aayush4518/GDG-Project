@@ -37,5 +37,17 @@
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "description": "Tourist Safety system",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aayush4518/GDG-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Aayush4518/GDG-Project/issues"
+  },
+  "homepage": "https://github.com/Aayush4518/GDG-Project#readme"
 }

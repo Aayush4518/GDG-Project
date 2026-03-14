@@ -8,26 +8,63 @@ import websocketService from './services/websocketService'
 import LiveActivityFeed from './components/LiveActivityFeed'
 import Advanced3DMap from './components/Advanced3DMap'
 import PerformanceMonitor from './components/PerformanceMonitor'
-import CollaborativeAwareness from './components/CollaborativeAwareness'
 
 
 function Navbar({ isAuthed, onLogout, user, theme, onToggleTheme, onContactClick, onFeaturesClick }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const closeMenu = () => setMenuOpen(false)
+    const handleResize = () => {
+      if (window.innerWidth >= 900) {
+        setMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('hashchange', closeMenu)
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('hashchange', closeMenu)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  const closeMenu = () => setMenuOpen(false)
+
   return (
     <nav className="navbar">
       <div className="container navbar-inner">
-        <div className="brand"><img src="/logo.png" alt="Logo" className="brand-logo" /> TravelGuardian {user?.role ? <span className="role-badge">{user.role}</span> : null}</div>
-        <ul className="nav-links">
-          <li><a href="#home">Home</a></li>
-          <li><button className="nav-btn" onClick={onFeaturesClick}>Features</button></li>
-          <li><a href="#dashboard">Dashboard</a></li>
+        <a href="#home" className="brand" onClick={closeMenu}>
+          <img src="/logo.png" alt="Logo" className="brand-logo" />
+          <span className="brand-text">
+            TravelGuardian
+            {user?.role ? <span className="role-badge">{user.role}</span> : null}
+          </span>
+        </a>
+        <button
+          className={`nav-toggle ${menuOpen ? 'is-open' : ''}`}
+          type="button"
+          aria-expanded={menuOpen}
+          aria-label="Toggle navigation menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <ul className={`nav-links ${menuOpen ? 'is-open' : ''}`}>
+          <li><a href="#home" onClick={closeMenu}>Home</a></li>
+          <li><button className="nav-btn" onClick={() => { onFeaturesClick(); closeMenu() }}>Features</button></li>
+          <li><a href="#dashboard" onClick={closeMenu}>Dashboard</a></li>
           {isAuthed && user?.role === 'Tourism' ? (
-            <li><a href="#verify">Verify ID</a></li>
+            <li><a href="#verify" onClick={closeMenu}>Verify ID</a></li>
           ) : null}
-          <li><button className="nav-btn" onClick={onContactClick}>Contact</button></li>
+          <li><button className="nav-btn" onClick={() => { onContactClick(); closeMenu() }}>Contact</button></li>
           {isAuthed ? (
-            <li><button className="btn" onClick={onLogout}>Logout</button></li>
+            <li><button className="btn nav-action-btn" onClick={() => { onLogout(); closeMenu() }}>Logout</button></li>
           ) : (
-            <li><a href="#login">Login</a></li>
+            <li><a href="#login" onClick={closeMenu}>Login</a></li>
           )}
         </ul>
       </div>
@@ -778,11 +815,6 @@ function Dashboard({ user }) {
         apiService={apiService}
       />
 
-      {/* Collaborative Awareness */}
-      <CollaborativeAwareness 
-        websocketService={websocketService}
-        user={user}
-      />
     </section>
   )
 }

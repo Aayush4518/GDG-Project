@@ -5,12 +5,12 @@
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
+  background: #dbeafe;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .advanced-3d-map.view-3d {
-  transform: perspective(1000px) rotateX(5deg) rotateY(-2deg);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
@@ -53,6 +53,18 @@
   color: #64748b;
   font-weight: 500;
   margin: 0;
+}
+
+.advanced-3d-map .leaflet-container,
+.fullscreen-live-map {
+  width: 100%;
+  height: 100%;
+  background: #dbeafe;
+}
+
+.advanced-3d-map .leaflet-control-container,
+.fullscreen-live-map .leaflet-control-container {
+  display: none;
 }
 
 /* Custom Map Controls */
@@ -199,12 +211,12 @@
   }
 }
 
-/* Map Legend - Moved to global position */
+/* Map legend stays inside the map card instead of floating over the page */
 .map-legend {
-  position: fixed;
-  bottom: 100px;
-  left: 20px;
-  z-index: 100;
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 30;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -665,12 +677,13 @@
   }
   
   .map-legend {
-    bottom: 10px;
+    bottom: 12px;
     left: 10px;
-    right: 10px;
-    max-width: none;
+    right: auto;
+    max-width: min(220px, calc(100% - 64px));
+    min-width: 160px;
   }
-  
+
   .legend-item {
     font-size: 11px;
   }
